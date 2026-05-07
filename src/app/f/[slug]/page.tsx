@@ -306,6 +306,37 @@ function RenderBlock({ block, tema, onNext, answers, setAnswers }: {
   const borderColor  = dark ? 'rgba(255,255,255,0.08)' : '#e8e8f2'
   const subTextColor = dark ? 'rgba(255,255,255,0.45)' : '#888'
 
+  // Disparo do Meta Pixel
+  useEffect(() => {
+    if (block.compId !== 'metapixel') return
+    if (block.pixelAtivo === false) return
+    if (!block.pixelId) return
+
+    const pixelId = block.pixelId
+    const evento = block.pixelEvento || 'PageView'
+    const eventoNome = evento === 'Custom' ? (block.pixelEventoCustom || 'Custom') : evento
+
+    // Injeta o script do pixel se ainda não existir
+    if (!(window as any).fbq) {
+      const script = document.createElement('script')
+      script.innerHTML = `
+        !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '${pixelId}');
+      `
+      document.head.appendChild(script)
+    }
+
+    // Dispara o evento
+    const fbq = (window as any).fbq
+    if (fbq) {
+      if (evento === 'PageView') {
+        fbq('track', 'PageView')
+      } else {
+        fbq('track', eventoNome)
+      }
+    }
+  }, [block.pixelId, block.pixelEvento, block.pixelAtivo])
+
   switch (block.compId) {
 
     case 'cabecalho':
@@ -575,6 +606,10 @@ function RenderBlock({ block, tema, onNext, answers, setAnswers }: {
         </div>
       )
     }
+
+    case 'metapixel':
+      // Invisível para o lead — dispara via useEffect acima
+      return null
 
     default:
       return null

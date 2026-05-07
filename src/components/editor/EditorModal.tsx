@@ -113,7 +113,7 @@ interface BlockItem {
   benefItems?: string[]; benefCor?: string; benefLayout?: string; benefIcone?: string
   loadTexto?: string; loadCor?: string; loadEstilo?: string; loadMensagens?: string[]
   redirTexto?: string; redirUrl?: string; redirSegundos?: number
-  pixelId?: string; pixelEvento?: string
+  pixelId?: string; pixelEvento?: string; pixelAtivo?: boolean; pixelEventoCustom?: string
 }
 
 function UploadButton({ label, accept, value, onChange }: { label: string; accept: string; value?: string; onChange: (url: string) => void }) {
@@ -1130,7 +1130,57 @@ function RenderRedirecionar({ b }: { b: BlockItem }) {
 }
 
 function RenderMetaPixel({ b }: { b: BlockItem }) {
-  return <div style={{ padding:'6px 16px' }}><div style={{ background:'rgba(25,119,243,0.06)', border:'1px solid rgba(25,119,243,0.2)', borderRadius:10, padding:'10px 12px', display:'flex', gap:8, alignItems:'center' }}><div style={{ width:28, height:28, borderRadius:6, background:'#1877f2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ color:'#fff', fontSize:14, fontWeight:700 }}>f</span></div><div><div style={{ fontSize:10, fontWeight:600, color:'#1a1a2e' }}>Meta Pixel</div><div style={{ fontSize:9, color:'#888' }}>{b.pixelId?`ID: ${b.pixelId} • ${b.pixelEvento||'PageView'}`:'Configure o Pixel'}</div></div></div></div>
+  const ativo = b.pixelAtivo !== false
+  const evento = b.pixelEvento || 'PageView'
+  const eventoLabel = evento === 'Custom' ? (b.pixelEventoCustom || 'Custom') : evento
+
+  const eventColors: Record<string,string> = {
+    PageView:'#1877f2', Lead:'#22d387', Purchase:'#f59e0b',
+    ViewContent:'#a78bfa', InitiateCheckout:'#f97316', CompleteRegistration:'#2dd4bf',
+    Custom:'#7c5cfc', Contact:'#f43f5e', Subscribe:'#22d387',
+  }
+  const cor = eventColors[evento] || '#1877f2'
+
+  return (
+    <div style={{ padding:'6px 14px' }}>
+      <div style={{ background:'rgba(24,119,242,0.05)', border:'1px solid rgba(24,119,242,0.15)', borderRadius:14, overflow:'hidden' }}>
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:'1px solid rgba(24,119,242,0.08)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ width:30, height:30, borderRadius:8, background:'#1877f2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </div>
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:'#1a1a2e' }}>Meta Pixel</div>
+              <div style={{ fontSize:9, color:'#999' }}>{b.pixelId ? `ID: ${b.pixelId}` : 'Sem ID configurado'}</div>
+            </div>
+          </div>
+          {/* Status ativo/inativo */}
+          <div style={{ display:'flex', alignItems:'center', gap:5, padding:'3px 9px', borderRadius:99, background: ativo ? 'rgba(34,211,135,0.1)' : 'rgba(255,255,255,0.05)', border:`1px solid ${ativo ? 'rgba(34,211,135,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
+            <div style={{ width:5, height:5, borderRadius:'50%', background: ativo ? '#22d387' : '#bbb' }}/>
+            <span style={{ fontSize:9, fontWeight:600, color: ativo ? '#22d387' : '#bbb' }}>{ativo ? 'Ativo' : 'Inativo'}</span>
+          </div>
+        </div>
+        {/* Evento */}
+        <div style={{ padding:'10px 14px', display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:32, height:32, borderRadius:8, background:`${cor}15`, border:`1px solid ${cor}30`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={cor} strokeWidth="1.8" strokeLinecap="round">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+          </div>
+          <div>
+            <div style={{ fontSize:9, color:'#999', marginBottom:2 }}>Evento disparado</div>
+            <div style={{ fontSize:12, fontWeight:700, color: cor }}>{eventoLabel}</div>
+          </div>
+          {!b.pixelId && (
+            <div style={{ marginLeft:'auto', fontSize:9, color:'#f59e0b', background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:6, padding:'2px 7px' }}>
+              Configure o ID →
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function RenderTransformacao({ b }: { b: BlockItem }) {
@@ -1382,7 +1432,72 @@ function PropsPanel({ block, onChange }: { block: BlockItem; onChange: (d: Parti
         <ColorPicker label="Cor Depois" value={(block as any).transCorDepois||'#4f8ef7'} onChange={v=>onChange({transCorDepois:v} as any)}/>
       </>}
       {block.compId==='redirecionar'&&<><Field label="Segundos">{num('redirSegundos',1,300,10)}</Field><Field label="URL">{inp('redirUrl','https://...')}</Field></>}
-      {block.compId==='metapixel'&&<><Field label="Pixel ID">{inp('pixelId','1234567890')}</Field><Field label="Evento">{sel('pixelEvento',[{v:'PageView',l:'PageView'},{v:'Lead',l:'Lead'},{v:'Purchase',l:'Purchase'}],'PageView')}</Field></>}
+      {block.compId==='metapixel'&&<>
+        {/* Status ativo */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderRadius:12, background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.06)' }}>
+          <div>
+            <div style={{ fontSize:12, fontWeight:600, color:'#fff', marginBottom:2 }}>Pixel ativo</div>
+            <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>Ativar/desativar disparo nesta página</div>
+          </div>
+          <div onClick={()=>onChange({pixelAtivo:block.pixelAtivo===false?true:false})} style={{ width:40, height:22, borderRadius:99, padding:2, background:block.pixelAtivo!==false?'#1877f2':'rgba(255,255,255,0.1)', border:'none', cursor:'pointer', transition:'background 0.2s', display:'flex', alignItems:'center', flexShrink:0 }}>
+            <div style={{ width:18, height:18, borderRadius:'50%', background:'#fff', transform:block.pixelAtivo!==false?'translateX(18px)':'translateX(0)', transition:'transform 0.2s', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }}/>
+          </div>
+        </div>
+
+        {/* Pixel ID */}
+        <Field label="Pixel ID">
+          <div style={{ position:'relative' }}>
+            <input value={block.pixelId||''} onChange={e=>onChange({pixelId:e.target.value})} placeholder="Ex: 1234567890123456" className="w-full rounded-lg px-3 py-2 text-xs text-white outline-none" style={{ background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.7)', paddingLeft:32 }}/>
+            <div style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', width:14, height:14, borderRadius:3, background:'#1877f2', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <span style={{ color:'#fff', fontSize:9, fontWeight:700 }}>f</span>
+            </div>
+          </div>
+        </Field>
+
+        {/* Tipo de evento */}
+        <Field label="Tipo de evento">
+          <select value={block.pixelEvento||'PageView'} onChange={e=>onChange({pixelEvento:e.target.value})} className="w-full rounded-lg px-3 py-2 text-xs outline-none" style={{ background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.7)' }}>
+            <optgroup label="Mais usados">
+              <option value="PageView">PageView — Visualização de página</option>
+              <option value="Lead">Lead — Novo lead capturado</option>
+              <option value="Purchase">Purchase — Compra finalizada</option>
+              <option value="InitiateCheckout">InitiateCheckout — Início do checkout</option>
+              <option value="ViewContent">ViewContent — Visualização de conteúdo</option>
+              <option value="CompleteRegistration">CompleteRegistration — Cadastro completo</option>
+            </optgroup>
+            <optgroup label="Outros eventos">
+              <option value="Contact">Contact — Contato realizado</option>
+              <option value="Schedule">Schedule — Agendamento</option>
+              <option value="SubmitApplication">SubmitApplication — Inscrição enviada</option>
+              <option value="AddPaymentInfo">AddPaymentInfo — Dados de pagamento</option>
+              <option value="AddToCart">AddToCart — Adicionou ao carrinho</option>
+              <option value="AddToWishlist">AddToWishlist — Lista de desejos</option>
+              <option value="CustomizeProduct">CustomizeProduct — Personalizou produto</option>
+              <option value="Donate">Donate — Doação</option>
+              <option value="FindLocation">FindLocation — Buscou localização</option>
+              <option value="Search">Search — Pesquisa</option>
+              <option value="StartTrial">StartTrial — Início de trial</option>
+              <option value="Subscribe">Subscribe — Assinatura</option>
+              <option value="Custom">Custom — Evento personalizado</option>
+            </optgroup>
+          </select>
+        </Field>
+
+        {/* Nome do evento custom */}
+        {block.pixelEvento==='Custom' && (
+          <Field label="Nome do evento personalizado">
+            <input value={(block as any).pixelEventoCustom||''} onChange={e=>onChange({pixelEventoCustom:e.target.value} as any)} placeholder="Ex: quiz_concluido, clicou_no_botao" className="w-full rounded-lg px-3 py-2 text-xs text-white outline-none" style={{ background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.7)' }}/>
+          </Field>
+        )}
+
+        {/* Dica */}
+        <div style={{ padding:'10px 12px', borderRadius:10, background:'rgba(24,119,242,0.06)', border:'1px solid rgba(24,119,242,0.15)' }}>
+          <div style={{ fontSize:10, color:'#60a5fa', fontWeight:600, marginBottom:4 }}>💡 Dica</div>
+          <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', lineHeight:1.6 }}>
+            Use <strong style={{color:'rgba(255,255,255,0.6)'}}>Lead</strong> na captura, <strong style={{color:'rgba(255,255,255,0.6)'}}>Purchase</strong> na página de obrigado e <strong style={{color:'rgba(255,255,255,0.6)'}}>ViewContent</strong> em páginas de conteúdo para otimizar suas campanhas.
+          </div>
+        </div>
+      </>}
     </div>
   )
 }
