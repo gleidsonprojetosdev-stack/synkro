@@ -282,7 +282,39 @@ function RenderTitulo({ b }: { b: BlockItem }) {
 }
 
 function RenderTexto({ b }: { b: BlockItem }) {
-  return <div style={{ padding:'8px 16px' }}><div style={{ fontSize:b.textoSize||12, fontWeight:b.textoFontWeight||'400', color:b.textoColor||'#555', lineHeight:b.textoLineHeight||1.7, textAlign:(b.textoAlign||'left') as any }}>{b.texto||'Digite o texto aqui.'}</div></div>
+  const texto = b.texto || 'Digite o texto aqui.'
+  const animacao = (b as any).textoAnimacao || 'nenhuma'
+
+  const animStyle: React.CSSProperties = animacao === 'aparecer'
+    ? { animation: 'txFadeUp 0.5s ease both' }
+    : animacao === 'slide'
+    ? { animation: 'txSlide 0.5s ease both' }
+    : animacao === 'zoom'
+    ? { animation: 'txZoom 0.4s ease both' }
+    : {}
+
+  return (
+    <div style={{ padding: '8px 16px' }}>
+      <style>{`
+        @keyframes txFadeUp { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
+        @keyframes txSlide  { from { opacity:0; transform:translateX(-12px) } to { opacity:1; transform:translateX(0) } }
+        @keyframes txZoom   { from { opacity:0; transform:scale(0.95) } to { opacity:1; transform:scale(1) } }
+      `}</style>
+      <div style={{
+        fontSize: b.textoSize || 14,
+        fontWeight: b.textoFontWeight || '400',
+        color: b.textoColor || '#555',
+        lineHeight: b.textoLineHeight || 1.7,
+        textAlign: (b.textoAlign || 'left') as any,
+        letterSpacing: (b as any).textoLetterSpacing || 0,
+        fontStyle: (b as any).textoItalico ? 'italic' : 'normal',
+        textDecoration: (b as any).textoSublinhado ? 'underline' : 'none',
+        ...animStyle,
+      }}>
+        {texto}
+      </div>
+    </div>
+  )
 }
 
 function RenderLista({ b }: { b: BlockItem }) {
@@ -1380,7 +1412,32 @@ function PropsPanel({ block, onChange }: { block: BlockItem; onChange: (d: Parti
       {block.compId==='cabecalho'&&<><Field label="Logo"><UploadButton label="Carregar logo" accept="image/*" value={block.logoFile} onChange={v=>onChange({logoFile:v})}/></Field><Field label="URL da logo">{inp('logoUrl','https://...')}</Field><Slider label="Tamanho da logo" value={block.logoSize??60} min={20} max={100} unit="%" onChange={v=>onChange({logoSize:v})}/><Field label="Posição">{seg('logoPosition',[{v:'left',l:'Esq'},{v:'center',l:'Centro'},{v:'right',l:'Dir'}],'center')}</Field><Slider label="Altura" value={block.headerHeight??52} min={36} max={80} unit="px" onChange={v=>onChange({headerHeight:v})}/><ColorPicker label="Cor de fundo" value={block.bgColor||'#ffffff'} onChange={v=>onChange({bgColor:v})}/><Field label="">{tog('Mostrar botão voltar','showBack')}</Field></>}
       {block.compId==='progresso'&&<><Slider label="Porcentagem" value={block.progress??10} min={0} max={100} unit="%" onChange={v=>onChange({progress:v})}/><ColorPicker label="Cor da barra" value={block.progressColor||'#7c5cfc'} onChange={v=>onChange({progressColor:v})}/><ColorPicker label="Cor do fundo" value={block.progressBgColor||'#f0f0f5'} onChange={v=>onChange({progressBgColor:v})}/><Slider label="Altura" value={block.progressHeight??8} min={2} max={20} unit="px" onChange={v=>onChange({progressHeight:v})}/><Field label="Estilo">{sel('progressStyle',[{v:'gradiente',l:'✨ Gradiente'},{v:'normal',l:'Normal'},{v:'listrado',l:'Listrado'},{v:'segmentado',l:'Segmentado'}],'gradiente')}</Field><Field label="">{tog('Mostrar %','showPercent')}</Field></>}
       {block.compId==='titulo'&&<><Field label="Headline">{ta('headline','Título...',2)}</Field><Field label="Subheadline">{ta('subheadline','Subtítulo...',2)}</Field><Slider label="Tamanho" value={block.headlineSize??16} min={12} max={32} unit="px" onChange={v=>onChange({headlineSize:v})}/><Field label="Peso">{seg('headlineFontWeight',[{v:'400',l:'Normal'},{v:'600',l:'Semi'},{v:'700',l:'Bold'},{v:'800',l:'Extra'}],'700')}</Field><ColorPicker label="Cor título" value={block.headlineColor||'#1a1a2e'} onChange={v=>onChange({headlineColor:v})}/><Field label="Alinhamento"><AlignPicker value={block.headlineAlign||'left'} onChange={v=>onChange({headlineAlign:v})}/></Field><Field label="">{tog('Sombra no texto','headlineShadow',false)}</Field></>}
-      {block.compId==='texto'&&<><Field label="Conteúdo">{ta('texto','Digite...',4)}</Field><Slider label="Tamanho" value={block.textoSize??12} min={10} max={20} unit="px" onChange={v=>onChange({textoSize:v})}/><ColorPicker label="Cor" value={block.textoColor||'#555555'} onChange={v=>onChange({textoColor:v})}/><Field label="Alinhamento"><AlignPicker value={block.textoAlign||'left'} onChange={v=>onChange({textoAlign:v})}/></Field></>}
+      {block.compId==='texto'&&<>
+        {/* Conteúdo */}
+        <Field label="Conteúdo">{ta('texto','Digite seu texto aqui...',5)}</Field>
+
+        {/* Formatação */}
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] uppercase tracking-wider font-semibold" style={{ color:'rgba(255,255,255,0.3)' }}>Formatação</label>
+          <div className="flex gap-2">
+            <button onClick={()=>onChange({textoFontWeight:block.textoFontWeight==='700'?'400':'700'})} style={{ flex:1, padding:'6px', borderRadius:8, background:block.textoFontWeight==='700'?'rgba(124,92,252,0.2)':'rgba(255,255,255,0.05)', border:`1px solid ${block.textoFontWeight==='700'?'rgba(124,92,252,0.4)':'rgba(255,255,255,0.08)'}`, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>B</button>
+            <button onClick={()=>onChange({textoItalico:!(block as any).textoItalico} as any)} style={{ flex:1, padding:'6px', borderRadius:8, background:(block as any).textoItalico?'rgba(124,92,252,0.2)':'rgba(255,255,255,0.05)', border:`1px solid ${(block as any).textoItalico?'rgba(124,92,252,0.4)':'rgba(255,255,255,0.08)'}`, color:'#fff', fontSize:13, fontStyle:'italic', cursor:'pointer' }}>I</button>
+            <button onClick={()=>onChange({textoSublinhado:!(block as any).textoSublinhado} as any)} style={{ flex:1, padding:'6px', borderRadius:8, background:(block as any).textoSublinhado?'rgba(124,92,252,0.2)':'rgba(255,255,255,0.05)', border:`1px solid ${(block as any).textoSublinhado?'rgba(124,92,252,0.4)':'rgba(255,255,255,0.08)'}`, color:'#fff', fontSize:13, textDecoration:'underline', cursor:'pointer' }}>U</button>
+          </div>
+        </div>
+
+        {/* Tamanho e linha */}
+        <Slider label="Tamanho" value={block.textoSize??14} min={10} max={32} unit="px" onChange={v=>onChange({textoSize:v})}/>
+        <Slider label="Altura da linha" value={block.textoLineHeight??1.7} min={1} max={3} unit="×" onChange={v=>onChange({textoLineHeight:v})}/>
+        <Slider label="Espaçamento letras" value={(block as any).textoLetterSpacing??0} min={-1} max={5} unit="px" onChange={v=>onChange({textoLetterSpacing:v} as any)}/>
+
+        {/* Cor e alinhamento */}
+        <ColorPicker label="Cor" value={block.textoColor||'#555555'} onChange={v=>onChange({textoColor:v})}/>
+        <Field label="Alinhamento"><AlignPicker value={block.textoAlign||'left'} onChange={v=>onChange({textoAlign:v})}/></Field>
+
+        {/* Animação */}
+        <Field label="Animação de entrada">{sel('textoAnimacao',[{v:'nenhuma',l:'Nenhuma'},{v:'aparecer',l:'✨ Aparecer'},{v:'slide',l:'→ Slide'},{v:'zoom',l:'🔍 Zoom'}],'nenhuma')}</Field>
+      </>}
       {block.compId==='lista'&&<><Field label="Itens (um por linha)"><textarea rows={5} value={(block.itens||['Item 1','Item 2','Item 3']).join('\n')} onChange={e=>onChange({itens:e.target.value.split('\n')})} className="w-full rounded-lg px-3 py-2 text-xs text-white resize-none outline-none" style={{...s,lineHeight:1.6}}/></Field><Field label="Ícone">{sel('listaIcone',[{v:'check',l:'✓ Check'},{v:'circulo',l:'● Círculo'},{v:'seta',l:'→ Seta'},{v:'estrela',l:'★ Estrela'}],'check')}</Field><ColorPicker label="Cor do ícone" value={block.checkColor||'#7c5cfc'} onChange={v=>onChange({checkColor:v})}/></>}
       {block.compId==='nota'&&<><Field label="Texto">{ta('notaTexto','Mensagem...',3)}</Field><Field label="Tipo">{sel('notaTipo',[{v:'info',l:'Info'},{v:'aviso',l:'Aviso'},{v:'sucesso',l:'Sucesso'},{v:'atencao',l:'Atenção'}],'info')}</Field></>}
       {block.compId==='quiz'&&<>
