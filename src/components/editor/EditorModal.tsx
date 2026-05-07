@@ -1239,6 +1239,101 @@ function RenderCarrossel({ b }: { b: BlockItem }) {
   )
 }
 
+function RenderNumero({ b }: { b: BlockItem }) {
+  const valorInicial = (b as any).numeroValorInicial ?? 0
+  const valorFinal = (b as any).numeroValorFinal ?? 100
+  const duracao = (b as any).numeroDuracao ?? 1500
+  const formato = (b as any).numeroFormato || 'numero'
+  const tamanho = (b as any).numeroTamanho || 64
+  const alinhamento = (b as any).numeroAlinhamento || 'center'
+  const decimais = (b as any).numeroDecimais ?? 0
+  const cor = (b as any).numeroCor || '#7c5cfc'
+  const subtitulo = (b as any).numeroSubtitulo || ''
+  const [atual, setAtual] = useState(valorInicial)
+
+  useEffect(() => {
+    setAtual(valorInicial)
+    const steps = 60
+    const stepDur = duracao / steps
+    let cur = 0
+    const timer = setInterval(() => {
+      cur++
+      const progress = 1 - Math.pow(1 - cur / steps, 3)
+      setAtual(valorInicial + (valorFinal - valorInicial) * progress)
+      if (cur >= steps) clearInterval(timer)
+    }, stepDur)
+    return () => clearInterval(timer)
+  }, [valorInicial, valorFinal, duracao])
+
+  function formatarNumero(n: number): string {
+    const fixed = n.toFixed(decimais)
+    const [int, dec] = fixed.split('.')
+    const intFormatado = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    const num = dec !== undefined ? `${intFormatado},${dec}` : intFormatado
+    if (formato === 'porcentagem') return `${num}%`
+    if (formato === 'moeda') return `R$ ${num}`
+    return num
+  }
+
+  return (
+    <div style={{ padding: '16px 16px', textAlign: alinhamento as any }}>
+      <div style={{ fontSize: tamanho, fontWeight: 900, color: cor, lineHeight: 1, fontFamily: '"Inter", monospace', letterSpacing: -2, transition: 'none' }}>
+        {formatarNumero(atual)}
+      </div>
+      {subtitulo && (
+        <div style={{ fontSize: 13, color: '#888', marginTop: 6, fontWeight: 500 }}>{subtitulo}</div>
+      )}
+    </div>
+  )
+}
+
+function RenderDestaques({ b }: { b: BlockItem }) {
+  const itens = (b as any).destaquesItens || [
+    { icone: '⭐', titulo: 'Destaque 1', subtitulo: 'Descrição do destaque' },
+    { icone: '🔥', titulo: 'Destaque 2', subtitulo: 'Descrição do destaque' },
+  ]
+  const layout = (b as any).destaquesLayout || 'cards'
+  const cor = (b as any).destaquesCor || '#7c5cfc'
+  const colunas = (b as any).destaquesColunas || '2'
+
+  if (layout === 'lista') {
+    return (
+      <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {itens.map((item: any, i: number) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: '#f9f9fc', border: '1px solid #eee' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${cor}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
+              {item.icone || '⭐'}
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>{item.titulo}</div>
+              {item.subtitulo && <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{item.subtitulo}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: '8px 16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: colunas === '1' ? '1fr' : colunas === '3' ? 'repeat(3,1fr)' : '1fr 1fr', gap: 10 }}>
+        {itens.map((item: any, i: number) => (
+          <div key={i} style={{ padding: '14px 12px', borderRadius: 14, background: '#f9f9fc', border: '1px solid #eee', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: `${cor}12`, border: `1.5px solid ${cor}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+              {item.icone || '⭐'}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e', lineHeight: 1.3 }}>{item.titulo}</div>
+            {item.subtitulo && <div style={{ fontSize: 10, color: '#888', lineHeight: 1.4 }}>{item.subtitulo}</div>}
+            {item.valor && (
+              <div style={{ fontSize: 16, fontWeight: 800, color: cor, marginTop: 2 }}>{item.valor}</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function BlockRenderer({ block }: { block: BlockItem }) {
   switch(block.compId) {
     case 'cabecalho': return <RenderCabecalho b={block}/>
@@ -1266,6 +1361,8 @@ function BlockRenderer({ block }: { block: BlockItem }) {
     case 'transformacao': return <RenderTransformacao b={block}/>
     case 'redirecionar': return <RenderRedirecionar b={block}/>
     case 'metapixel': return <RenderMetaPixel b={block}/>
+    case 'numero': return <RenderNumero b={block}/>
+    case 'destaques': return <RenderDestaques b={block}/>
     default: return <div style={{ padding:'10px 16px', fontSize:10, color:'#aaa' }}>{block.label}</div>
   }
 }
@@ -1432,6 +1529,43 @@ function PropsPanel({ block, onChange }: { block: BlockItem; onChange: (d: Parti
         <ColorPicker label="Cor Depois" value={(block as any).transCorDepois||'#4f8ef7'} onChange={v=>onChange({transCorDepois:v} as any)}/>
       </>}
       {block.compId==='redirecionar'&&<><Field label="Segundos">{num('redirSegundos',1,300,10)}</Field><Field label="URL">{inp('redirUrl','https://...')}</Field></>}
+      {block.compId==='numero'&&<>
+        <Field label="Valor inicial">{inp('numeroValorInicial','0','number')}</Field>
+        <Field label="Valor final">{inp('numeroValorFinal','100','number')}</Field>
+        <Field label="Subtítulo (opcional)">{inp('numeroSubtitulo','Ex: clientes satisfeitos')}</Field>
+        <Field label="Formato">{seg('numeroFormato',[{v:'numero',l:'Número'},{v:'porcentagem',l:'%'},{v:'moeda',l:'R$'}],'numero')}</Field>
+        <Slider label="Tamanho" value={(block as any).numeroTamanho??64} min={24} max={120} unit="px" onChange={v=>onChange({numeroTamanho:v} as any)}/>
+        <Slider label="Duração da animação" value={(block as any).numeroDuracao??1500} min={300} max={5000} unit="ms" onChange={v=>onChange({numeroDuracao:v} as any)}/>
+        <Slider label="Decimais" value={(block as any).numeroDecimais??0} min={0} max={3} unit="" onChange={v=>onChange({numeroDecimais:v} as any)}/>
+        <Field label="Alinhamento"><AlignPicker value={(block as any).numeroAlinhamento||'center'} onChange={v=>onChange({numeroAlinhamento:v} as any)}/></Field>
+        <ColorPicker label="Cor do número" value={(block as any).numeroCor||'#7c5cfc'} onChange={v=>onChange({numeroCor:v} as any)}/>
+      </>}
+      {block.compId==='destaques'&&<>
+        <Field label="Layout">{seg('destaquesLayout',[{v:'cards',l:'Cards'},{v:'lista',l:'Lista'}],'cards')}</Field>
+        <Field label="Colunas">{seg('destaquesColunas',[{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'}],'2')}</Field>
+        <ColorPicker label="Cor dos ícones" value={(block as any).destaquesCor||'#7c5cfc'} onChange={v=>onChange({destaquesCor:v} as any)}/>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-medium uppercase tracking-wider" style={{ color:'rgba(255,255,255,0.35)' }}>Itens</label>
+            <button onClick={()=>{const d=(block as any).destaquesItens||[{icone:'⭐',titulo:'Destaque 1',subtitulo:''},{icone:'🔥',titulo:'Destaque 2',subtitulo:''}];onChange({destaquesItens:[...d,{icone:'✨',titulo:`Destaque ${d.length+1}`,subtitulo:''}]} as any)}} style={{ fontSize:10, color:'#a78bfa', background:'rgba(124,92,252,0.1)', border:'1px solid rgba(124,92,252,0.25)', borderRadius:6, padding:'2px 8px', cursor:'pointer' }}>+ Add</button>
+          </div>
+          {((block as any).destaquesItens||[{icone:'⭐',titulo:'Destaque 1',subtitulo:''},{icone:'🔥',titulo:'Destaque 2',subtitulo:''}]).map((item: any, i: number) => {
+            const updateItem = (data: any) => { const d=[...((block as any).destaquesItens||[{icone:'⭐',titulo:'Destaque 1',subtitulo:''},{icone:'🔥',titulo:'Destaque 2',subtitulo:''}])]; d[i]={...d[i],...data}; onChange({destaquesItens:d} as any) }
+            const removeItem = () => { const d=[...((block as any).destaquesItens||[])]; d.splice(i,1); onChange({destaquesItens:d} as any) }
+            return (
+              <div key={i} className="flex flex-col gap-2 p-2.5 rounded-xl" style={{ background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.07)' }}>
+                <div className="flex items-center gap-2">
+                  <input value={item.icone||''} onChange={e=>updateItem({icone:e.target.value})} placeholder="Emoji" className="w-10 bg-transparent text-sm outline-none text-center" style={{ color:'rgba(255,255,255,0.7)' }}/>
+                  <input value={item.titulo||''} onChange={e=>updateItem({titulo:e.target.value})} placeholder="Título" className="flex-1 bg-transparent text-xs text-white outline-none" style={{ minWidth:0 }}/>
+                  <button onClick={removeItem} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(244,63,94,0.6)', fontSize:14 }}>×</button>
+                </div>
+                <input value={item.subtitulo||''} onChange={e=>updateItem({subtitulo:e.target.value})} placeholder="Subtítulo (opcional)" className="w-full bg-transparent text-[10px] outline-none" style={{ color:'rgba(255,255,255,0.35)', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:4 }}/>
+                <input value={item.valor||''} onChange={e=>updateItem({valor:e.target.value})} placeholder="Valor destacado (ex: 10.000+)" className="w-full bg-transparent text-[10px] outline-none" style={{ color:'rgba(255,255,255,0.35)', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:4 }}/>
+              </div>
+            )
+          })}
+        </div>
+      </>}
       {block.compId==='metapixel'&&<>
         {/* Status ativo */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderRadius:12, background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.06)' }}>
