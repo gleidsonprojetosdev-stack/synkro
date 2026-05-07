@@ -9,6 +9,7 @@ const TABS = [
   { id: 'tema',          label: 'Tema' },
   { id: 'compartilhe',   label: 'Compartilhe' },
   { id: 'estatisticas',  label: 'Estatísticas' },
+  { id: 'resultados',    label: 'Resultados' },
   { id: 'configuracoes', label: 'Configurações' },
 ]
 
