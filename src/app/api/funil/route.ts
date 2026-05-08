@@ -11,9 +11,14 @@ export async function GET(req: NextRequest) {
   const slug = searchParams.get('slug')
   const projectId = searchParams.get('projectId')
 
+  // ✅ Incluir todos os campos de configuração na query
   const query = supabase
     .from('projects')
-    .select('id, name, flow_data, tema_data, published')
+    .select(`
+      id, name, flow_data, tema_data, published,
+      site_title, site_description, head_script, allow_indexing,
+      pixel_id, gtm_id, utmify_id
+    `)
 
   const { data: project, error } = slug
     ? await query.eq('slug', slug).eq('published', true).single()
@@ -23,7 +28,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Funil não encontrado' }, { status: 404 })
   }
 
-  // Busca todas as páginas do projeto
   const { data: pages } = await supabase
     .from('pages')
     .select('*')
@@ -40,7 +44,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'projectId e nodeId são obrigatórios' }, { status: 400 })
   }
 
-  // Registra visita na página com node_id
   const { error } = await supabase.from('page_stats').insert({
     project_id: projectId,
     node_id: nodeId,

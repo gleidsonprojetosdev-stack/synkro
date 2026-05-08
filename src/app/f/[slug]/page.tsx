@@ -48,6 +48,14 @@ interface Project {
   flow_data: { nodes: FlowNode[]; connections: Connection[] }
   tema_data: TemaData
   published: boolean
+  // ✅ Campos de configuração
+  site_title?: string
+  site_description?: string
+  head_script?: string
+  allow_indexing?: boolean
+  pixel_id?: string
+  gtm_id?: string
+  utmify_id?: string
 }
 
 const ESP_PX = [8, 12, 16, 20, 28]
@@ -84,6 +92,65 @@ export default function FunilPage() {
       body: JSON.stringify({ projectId: project.id, nodeId: currentNodeId }),
     })
   }, [currentNodeId, project])
+
+  // ✅ Injetar head_script, GTM, UTMify e title quando o projeto carregar
+  useEffect(() => {
+    if (!project) return
+
+    // Título da aba
+    if (project.site_title) {
+      document.title = project.site_title
+    }
+
+    // Head script personalizado
+    if (project.head_script) {
+      const div = document.createElement('div')
+      div.innerHTML = project.head_script
+      Array.from(div.querySelectorAll('script')).forEach(oldScript => {
+        const newScript = document.createElement('script')
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+        newScript.textContent = oldScript.textContent
+        document.head.appendChild(newScript)
+      })
+    }
+
+    // Meta Pixel global (pixel_id das configurações)
+    if (project.pixel_id && !(window as any).fbq) {
+      const script = document.createElement('script')
+      script.innerHTML = `
+        !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '${project.pixel_id}');
+        fbq('track', 'PageView');
+      `
+      document.head.appendChild(script)
+    }
+
+    // Google Tag Manager
+    if (project.gtm_id) {
+      const script = document.createElement('script')
+      script.innerHTML = `
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});
+        var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+        j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+        f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${project.gtm_id}');
+      `
+      document.head.appendChild(script)
+    }
+
+    // UTMify
+    if (project.utmify_id) {
+      const script = document.createElement('script')
+      script.async = true
+      script.src = `https://cdn.utmify.com.br/scripts/utms/latest.js`
+      script.setAttribute('data-utmify-prevent-subids', 'true')
+      document.head.appendChild(script)
+
+      const scriptToken = document.createElement('script')
+      scriptToken.innerHTML = `window.utmifyToken = '${project.utmify_id}';`
+      document.head.insertBefore(scriptToken, script)
+    }
+
+  }, [project])
 
   const goToNext = useCallback(() => {
     if (!project) return
@@ -161,6 +228,17 @@ export default function FunilPage() {
         @keyframes spin { to { transform: rotate(360deg) } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
       `}</style>
+
+      {/* GTM noscript */}
+      {project?.gtm_id && (
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${project.gtm_id}`}
+            height="0" width="0"
+            style={{ display: 'none', visibility: 'hidden' }}
+          />
+        </noscript>
+      )}
 
       <div style={{ width: '100%', maxWidth: 480, paddingBottom: 40, animation: 'fadeUp 0.4s ease' }}>
         {currentPage.blocks.map((block, idx) => (
@@ -301,12 +379,11 @@ function RenderBlock({ block, tema, onNext, answers, setAnswers }: {
   const rad = tema.raio
   const dark = tema.modoEscuro
 
-  // Cor adaptativa para elementos internos (cards, inputs)
   const surfaceColor = dark ? 'rgba(255,255,255,0.05)' : '#f8f8fc'
   const borderColor  = dark ? 'rgba(255,255,255,0.08)' : '#e8e8f2'
   const subTextColor = dark ? 'rgba(255,255,255,0.45)' : '#888'
 
-  // Disparo do Meta Pixel
+  // Disparo do Meta Pixel por bloco (pixel configurado no bloco individualmente)
   useEffect(() => {
     if (block.compId !== 'metapixel') return
     if (block.pixelAtivo === false) return
@@ -316,7 +393,6 @@ function RenderBlock({ block, tema, onNext, answers, setAnswers }: {
     const evento = block.pixelEvento || 'PageView'
     const eventoNome = evento === 'Custom' ? (block.pixelEventoCustom || 'Custom') : evento
 
-    // Injeta o script do pixel se ainda não existir
     if (!(window as any).fbq) {
       const script = document.createElement('script')
       script.innerHTML = `
@@ -326,7 +402,6 @@ function RenderBlock({ block, tema, onNext, answers, setAnswers }: {
       document.head.appendChild(script)
     }
 
-    // Dispara o evento
     const fbq = (window as any).fbq
     if (fbq) {
       if (evento === 'PageView') {
@@ -608,7 +683,6 @@ function RenderBlock({ block, tema, onNext, answers, setAnswers }: {
     }
 
     case 'metapixel':
-      // Invisível para o lead — dispara via useEffect acima
       return null
 
     default:
