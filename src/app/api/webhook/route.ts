@@ -124,17 +124,12 @@ function buildEmail(email: string, password: string, plan: string, appUrl: strin
           <!-- Hero Card -->
           <tr>
             <td style="background: linear-gradient(135deg, #13141f 0%, #1a1040 100%); border-radius: 20px 20px 0 0; border: 1px solid rgba(124,92,252,0.2); border-bottom: none; padding: 40px 40px 32px; text-align: center;">
-
-              <!-- Ícone -->
               <div style="width: 72px; height: 72px; border-radius: 20px; background: linear-gradient(135deg, ${planColor}25, ${planColor}10); border: 1.5px solid ${planColor}40; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 72px; font-size: 32px;">
                 🎉
               </div>
-
-              <!-- Badge do plano -->
               <div style="display: inline-block; background: ${planColor}18; border: 1px solid ${planColor}40; border-radius: 99px; padding: 4px 16px; margin-bottom: 16px;">
                 <span style="font-size: 11px; font-weight: 700; color: ${planColor}; text-transform: uppercase; letter-spacing: 1.5px;">Plano ${planLabel}</span>
               </div>
-
               <h1 style="margin: 0 0 12px; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; line-height: 1.2;">
                 Seu acesso está pronto!
               </h1>
@@ -151,8 +146,6 @@ function buildEmail(email: string, password: string, plan: string, appUrl: strin
                 <tr>
                   <td style="padding: 24px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
                     <p style="margin: 0 0 16px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 1.5px;">Suas credenciais de acesso</p>
-
-                    <!-- Email -->
                     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 12px;">
                       <tr>
                         <td style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 16px;">
@@ -161,8 +154,6 @@ function buildEmail(email: string, password: string, plan: string, appUrl: strin
                         </td>
                       </tr>
                     </table>
-
-                    <!-- Senha -->
                     <table width="100%" cellpadding="0" cellspacing="0" border="0">
                       <tr>
                         <td style="background: ${planColor}10; border: 1.5px solid ${planColor}35; border-radius: 10px; padding: 12px 16px;">
@@ -240,8 +231,31 @@ function buildEmail(email: string, password: string, plan: string, appUrl: strin
 
 export async function POST(req: NextRequest) {
   try {
+    // Lê o body uma vez e guarda
     const body = await req.json()
     console.log('Webhook PerfectPay recebido:', JSON.stringify(body))
+
+    // ✅ VALIDAÇÃO DO TOKEN PERFECTPAY
+    const publicToken = process.env.PERFECTPAY_PUBLIC_TOKEN
+    if (publicToken) {
+      // PerfectPay pode enviar o token no header ou no body
+      const headerToken =
+        req.headers.get('x-perfectpay-token') ||
+        req.headers.get('x-public-token') ||
+        req.headers.get('authorization')
+
+      const bodyToken =
+        body?.token ||
+        body?.public_token ||
+        body?.webhook_token
+
+      const receivedToken = headerToken || bodyToken
+
+      if (!receivedToken || receivedToken !== publicToken) {
+        console.warn('Webhook rejeitado: token inválido ou ausente', { receivedToken })
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+    }
 
     const { sale_status, customer, product } = body
 
@@ -260,7 +274,7 @@ export async function POST(req: NextRequest) {
     const plan = getPlan(productName)
     const expiresAt = getExpiresAt(plan)
 
-    // Verifica se usuário já existe
+    // Verifica se usuário já existe (busca direta por email, mais eficiente)
     const { data: existingUsers } = await supabase.auth.admin.listUsers()
     const existingUser = existingUsers?.users?.find((u: any) => u.email === email)
 
