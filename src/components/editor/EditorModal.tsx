@@ -283,34 +283,9 @@ function RenderTitulo({ b }: { b: BlockItem }) {
 
 function RenderTexto({ b }: { b: BlockItem }) {
   const texto = b.texto || 'Digite o texto aqui.'
-  const animacao = (b as any).textoAnimacao || 'nenhuma'
-
-  const animStyle: React.CSSProperties = animacao === 'aparecer'
-    ? { animation: 'txFadeUp 0.5s ease both' }
-    : animacao === 'slide'
-    ? { animation: 'txSlide 0.5s ease both' }
-    : animacao === 'zoom'
-    ? { animation: 'txZoom 0.4s ease both' }
-    : {}
-
   return (
     <div style={{ padding: '8px 16px' }}>
-      <style>{`
-        @keyframes txFadeUp { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes txSlide  { from { opacity:0; transform:translateX(-12px) } to { opacity:1; transform:translateX(0) } }
-        @keyframes txZoom   { from { opacity:0; transform:scale(0.95) } to { opacity:1; transform:scale(1) } }
-      `}</style>
-      <div style={{
-        fontSize: b.textoSize || 14,
-        fontWeight: b.textoFontWeight || '400',
-        color: b.textoColor || '#555',
-        lineHeight: b.textoLineHeight || 1.7,
-        textAlign: (b.textoAlign || 'left') as any,
-        letterSpacing: (b as any).textoLetterSpacing || 0,
-        fontStyle: (b as any).textoItalico ? 'italic' : 'normal',
-        textDecoration: (b as any).textoSublinhado ? 'underline' : 'none',
-        ...animStyle,
-      }}>
+      <div style={{ fontSize: b.textoSize || 14, fontWeight: b.textoFontWeight || '400', color: b.textoColor || '#555', lineHeight: b.textoLineHeight || 1.7, textAlign: (b.textoAlign || 'left') as any }}>
         {texto}
       </div>
     </div>
@@ -411,601 +386,14 @@ function RenderQuiz({ b }: { b: BlockItem }) {
   )
 }
 
-function RenderGrafico({ b }: { b: BlockItem }) {
-  const tipo = b.graficoTipo || 'linha'
-  const cor = b.graficoCor || '#7c5cfc'
-  const valores = b.graficoValores || [30,55,40,70,60,85,75]
-  const labels = b.graficoLabels || ['Jan','Fev','Mar','Abr','Mai','Jun','Jul']
-  const H = b.graficoAlturaCustom || 110
-  const W = 252
-  const pad = { t:14, r:10, b:22, l:24 }
-  const innerW = W - pad.l - pad.r
-  const innerH = H - pad.t - pad.b
-  const mostrarGrid = b.graficoMostrarGrid !== false
-  const mostrarPontos = b.graficoMostrarPontos !== false
-  const mostrarLabels = (b as any).graficoMostrarLabels !== false
-
-  const [progresso, setProgresso] = useState(0)
-  const [hover, setHover] = useState<number|null>(null)
-
-  useEffect(() => {
-    setProgresso(0)
-    const steps = 40, dur = 900
-    let cur = 0
-    const t = setInterval(() => {
-      cur++
-      setProgresso(Math.min(1, 1 - Math.pow(1 - cur/steps, 2.5)))
-      if (cur >= steps) clearInterval(t)
-    }, dur/steps)
-    return () => clearInterval(t)
-  }, [JSON.stringify(valores), tipo, cor])
-
-  const max = Math.max(...valores), minV = Math.min(...valores), range = max - minV || 1
-  const gradId = `gfx${cor.replace('#','')}`
-
-  // Linha/Área
-  if (tipo === 'linha' || tipo === 'area') {
-    const pts = valores.map((v,i) => ({
-      x: pad.l + (i/(Math.max(valores.length-1,1)))*innerW,
-      y: pad.t + (1-(v-minV)/range)*innerH
-    }))
-    // Interpolar pts com progresso
-    const ptsAnim = pts.map((p,i) => ({
-      x: p.x,
-      y: pad.t + innerH - (pad.t + innerH - p.y) * progresso
-    }))
-    const pathD = ptsAnim.map((p,i) => {
-      if(i===0) return `M${p.x},${p.y}`
-      const prev = ptsAnim[i-1]
-      const cx = (prev.x + p.x) / 2
-      return `C${cx},${prev.y} ${cx},${p.y} ${p.x},${p.y}`
-    }).join(' ')
-    const areaD = pathD + ` L${ptsAnim[ptsAnim.length-1].x},${pad.t+innerH} L${ptsAnim[0].x},${pad.t+innerH} Z`
-
-    return (
-      <div style={{ padding:'8px 12px 4px' }}>
-        <style>{`@keyframes gfxFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}`}</style>
-        {b.graficoTitulo && (
-          <div style={{ fontSize:11, fontWeight:700, color:'#1a1a2e', marginBottom:4 }}>{b.graficoTitulo}</div>
-        )}
-        {(b as any).graficoSubtitulo && (
-          <div style={{ fontSize:9, color:'#999', marginBottom:8 }}>{(b as any).graficoSubtitulo}</div>
-        )}
-        <div style={{ background:'#fafafa', borderRadius:14, padding:'10px 6px 2px', border:'1px solid rgba(0,0,0,0.06)', overflow:'hidden', position:'relative', animation:'gfxFadeIn 0.4s ease' }}>
-          <svg width={W} height={H+6} viewBox={`0 0 ${W} ${H+6}`} style={{ overflow:'visible' }}>
-            <defs>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={cor} stopOpacity="0.28"/>
-                <stop offset="100%" stopColor={cor} stopOpacity="0.02"/>
-              </linearGradient>
-            </defs>
-            {/* Grid */}
-            {mostrarGrid && [0.25,0.5,0.75,1].map((t,i) => (
-              <line key={i} x1={pad.l} x2={W-pad.r}
-                y1={pad.t+t*innerH} y2={pad.t+t*innerH}
-                stroke="rgba(0,0,0,0.05)" strokeWidth="1" strokeDasharray="4 4"/>
-            ))}
-            {/* Eixo Y */}
-            {mostrarGrid && [0,0.5,1].map((t,i) => (
-              <text key={i} x={pad.l-4} y={pad.t+t*innerH+3}
-                textAnchor="end" fontSize="7" fill="rgba(0,0,0,0.28)">
-                {Math.round(max - t*(max-minV))}
-              </text>
-            ))}
-            {/* Área */}
-            {tipo==='area' && <path d={areaD} fill={`url(#${gradId})`}/>}
-            {tipo==='linha' && <path d={areaD} fill={`url(#${gradId})`} opacity="0.5"/>}
-            {/* Linha */}
-            <path d={pathD} stroke={cor} strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-            {/* Pontos */}
-            {mostrarPontos && ptsAnim.map((p,i) => (
-              <g key={i} style={{ cursor:'pointer' }} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}>
-                <circle cx={p.x} cy={p.y} r="6" fill="transparent"/>
-                <circle cx={p.x} cy={p.y} r={hover===i?5:3.5} fill="white" stroke={cor} strokeWidth="2" style={{ transition:'r 0.15s' }}/>
-                <circle cx={p.x} cy={p.y} r={hover===i?3:2} fill={cor} style={{ transition:'r 0.15s' }}/>
-                {/* Tooltip no hover */}
-                {hover===i && (
-                  <g>
-                    <rect x={p.x-14} y={p.y-22} width="28" height="16" rx="5" fill={cor}/>
-                    <text x={p.x} y={p.y-11} textAnchor="middle" fontSize="8" fontWeight="700" fill="white">{valores[i]}</text>
-                  </g>
-                )}
-              </g>
-            ))}
-            {/* Labels eixo X */}
-            {mostrarLabels && labels.map((l,i) => (
-              <text key={i} x={pad.l+(i/(Math.max(labels.length-1,1)))*innerW}
-                y={H+5} textAnchor="middle" fontSize="7" fill="rgba(0,0,0,0.3)">{l}</text>
-            ))}
-          </svg>
-        </div>
-      </div>
-    )
-  }
-
-  // Barras
-  if (tipo === 'barra') {
-    const bw = Math.max((innerW/valores.length) - 5, 8)
-    return (
-      <div style={{ padding:'8px 12px 4px' }}>
-        {b.graficoTitulo && <div style={{ fontSize:11, fontWeight:700, color:'#1a1a2e', marginBottom:4 }}>{b.graficoTitulo}</div>}
-        {(b as any).graficoSubtitulo && <div style={{ fontSize:9, color:'#999', marginBottom:8 }}>{(b as any).graficoSubtitulo}</div>}
-        <div style={{ background:'#fafafa', borderRadius:14, padding:'10px 6px 2px', border:'1px solid rgba(0,0,0,0.06)', overflow:'hidden' }}>
-          <svg width={W} height={H+6} viewBox={`0 0 ${W} ${H+6}`}>
-            <defs>
-              <linearGradient id={`${gradId}b`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={cor} stopOpacity="1"/>
-                <stop offset="100%" stopColor={cor} stopOpacity="0.6"/>
-              </linearGradient>
-            </defs>
-            {mostrarGrid && [0.25,0.5,0.75,1].map((t,i) => (
-              <line key={i} x1={pad.l} x2={W-pad.r} y1={pad.t+t*innerH} y2={pad.t+t*innerH} stroke="rgba(0,0,0,0.05)" strokeWidth="1" strokeDasharray="4 3"/>
-            ))}
-            {valores.map((v,i) => {
-              const bh = ((v-minV)/range)*innerH * progresso
-              const x = pad.l + i*(innerW/valores.length) + 2
-              const y = pad.t + innerH - bh
-              const isHov = hover === i
-              return (
-                <g key={i} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)} style={{ cursor:'pointer' }}>
-                  <rect x={x} y={y} width={bw} height={bh} rx="5" fill={isHov?cor:`url(#${gradId}b)`} opacity={isHov?1:0.85} style={{ transition:'opacity 0.15s' }}/>
-                  <rect x={x} y={y} width={bw} height={Math.min(bh,7)} rx="5" fill="rgba(255,255,255,0.25)"/>
-                  {isHov && (
-                    <g>
-                      <rect x={x+bw/2-14} y={y-20} width="28" height="16" rx="5" fill={cor}/>
-                      <text x={x+bw/2} y={y-9} textAnchor="middle" fontSize="8" fontWeight="700" fill="white">{v}</text>
-                    </g>
-                  )}
-                  {mostrarLabels && <text x={x+bw/2} y={H+5} textAnchor="middle" fontSize="7" fill="rgba(0,0,0,0.3)">{labels[i]||''}</text>}
-                </g>
-              )
-            })}
-          </svg>
-        </div>
-      </div>
-    )
-  }
-
-  // Pizza
-  if (tipo === 'pizza') {
-    const size=90, cx=size/2, cy=size/2, r=size/2-6
-    const total = valores.reduce((a,b)=>a+b,0)||1
-    const cores = [cor,'#f97316','#22d387','#f43f5e','#2dd4bf','#fbbf24']
-    let angle = -Math.PI/2
-    const slices = valores.slice(0,6).map((v,i) => {
-      const sa=angle, sweep=(v/total)*Math.PI*2*progresso
-      angle += (v/total)*Math.PI*2
-      const ea = sa + sweep
-      const x1=cx+r*Math.cos(sa), y1=cy+r*Math.sin(sa)
-      const x2=cx+r*Math.cos(ea), y2=cy+r*Math.sin(ea)
-      return { d:`M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${sweep>Math.PI?1:0} 1 ${x2},${y2} Z`, cor:cores[i%cores.length], pct:Math.round(v/total*100), label:labels[i]||`Item ${i+1}` }
-    })
-    return (
-      <div style={{ padding:'8px 12px 4px' }}>
-        {b.graficoTitulo && <div style={{ fontSize:11, fontWeight:700, color:'#1a1a2e', marginBottom:4 }}>{b.graficoTitulo}</div>}
-        <div style={{ background:'#fafafa', borderRadius:14, padding:'10px', border:'1px solid rgba(0,0,0,0.06)', display:'flex', alignItems:'center', gap:12 }}>
-          <svg width={size+16} height={size+16} viewBox={`-8 -8 ${size+16} ${size+16}`}>
-            {slices.map((s,i)=>(
-              <path key={i} d={s.d} fill={s.cor} stroke="white" strokeWidth="2.5"
-                onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}
-                style={{ transform: hover===i?`scale(1.05)`:'scale(1)', transformOrigin:`${cx}px ${cy}px`, transition:'transform 0.15s', cursor:'pointer' }}/>
-            ))}
-            <circle cx={cx} cy={cy} r={r*0.42} fill="white"/>
-            <text x={cx} y={cy+4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#1a1a2e">{Math.round(total*progresso)}</text>
-          </svg>
-          <div style={{ display:'flex', flexDirection:'column', gap:4, flex:1 }}>
-            {slices.map((s,i)=>(
-              <div key={i} style={{ display:'flex', alignItems:'center', gap:5, opacity: hover!==null&&hover!==i?0.4:1, transition:'opacity 0.15s' }}>
-                <div style={{ width:7, height:7, borderRadius:2, background:s.cor, flexShrink:0 }}/>
-                <span style={{ fontSize:9, color:'#555', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
-                <span style={{ fontSize:9, fontWeight:700, color:s.cor }}>{s.pct}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return null
-}
-
-function RenderResultado({ b }: { b: BlockItem }) {
-  const cor = b.resultCor || '#7c5cfc'
-  const score = b.resultScore ?? 72
-  const estilo = b.resultEstilo || 'barra'
-  const faixas = b.resultFaixas || [{min:0,max:33,label:'Nível 1',cor:'#4f8ef7'},{min:34,max:66,label:'Nível 2',cor:'#4f8ef7'},{min:67,max:100,label:'Nível 3',cor:'#4f8ef7'}]
-  const faixa = faixas.find(f => score >= f.min && score <= f.max)
-  const corFaixa = faixa?.cor || cor
-
-  const [fase, setFase] = useState<'loading'|'reveal'|'done'>('loading')
-  const [contadorAtual, setContadorAtual] = useState(0)
-  const [barraWidth, setBarraWidth] = useState(0)
-  const [dashOffset, setDashOffset] = useState(188.5)
-
-  useEffect(() => {
-    setFase('loading')
-    setContadorAtual(0)
-    setBarraWidth(0)
-    setDashOffset(188.5)
-    const t1 = setTimeout(() => setFase('reveal'), 1400)
-    return () => clearTimeout(t1)
-  }, [score, b.resultCor, b.resultEstilo])
-
-  useEffect(() => {
-    if (fase !== 'reveal') return
-    const duration = 1200
-    const steps = 60
-    const interval = duration / steps
-    let current = 0
-    const timer = setInterval(() => {
-      current++
-      const eased = Math.round(score * (1 - Math.pow(1 - current / steps, 3)))
-      setContadorAtual(eased)
-      setBarraWidth(score * (1 - Math.pow(1 - current / steps, 3)))
-      setDashOffset(188.5 - (score / 100) * 188.5 * (1 - Math.pow(1 - current / steps, 3)))
-      if (current >= steps) { clearInterval(timer); setFase('done') }
-    }, interval)
-    return () => clearInterval(timer)
-  }, [fase, score])
-
-  const isLoading = fase === 'loading'
-
-  return (
-    <div style={{ padding: '10px 14px' }}>
-      <style>{`
-        @keyframes resSpinIn { from { opacity:0; transform:scale(0.7) rotate(-10deg) } to { opacity:1; transform:scale(1) rotate(0deg) } }
-        @keyframes resFadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes resShimmer { 0%{background-position:-200px 0} 100%{background-position:200px 0} }
-        @keyframes resPulse { 0%,100%{box-shadow:0 0 0 0 ${corFaixa}50} 50%{box-shadow:0 0 0 8px ${corFaixa}00} }
-        @keyframes resSpinner { to { transform: rotate(360deg) } }
-        @keyframes resBadgePop { 0%{transform:scale(0)} 60%{transform:scale(1.15)} 100%{transform:scale(1)} }
-      `}</style>
-
-      {/* Loading phase */}
-      {isLoading && (
-        <div style={{ padding: '24px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-          {/* Spinner animado */}
-          <div style={{ position: 'relative', width: 56, height: 56 }}>
-            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `3px solid ${corFaixa}18` }}/>
-            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `3px solid transparent`, borderTopColor: corFaixa, animation: 'resSpinner 0.8s linear infinite' }}/>
-            <div style={{ position: 'absolute', inset: 8, borderRadius: '50%', border: `2px solid transparent`, borderTopColor: `${corFaixa}60`, animation: 'resSpinner 1.2s linear infinite reverse' }}/>
-          </div>
-
-          {/* Skeleton das barras */}
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ height: 10, borderRadius: 99, width: '70%', background: `linear-gradient(90deg, ${corFaixa}12 25%, ${corFaixa}25 50%, ${corFaixa}12 75%)`, backgroundSize: '400px 100%', animation: 'resShimmer 1.2s infinite' }}/>
-            <div style={{ height: 10, borderRadius: 99, width: '85%', background: `linear-gradient(90deg, ${corFaixa}10 25%, ${corFaixa}20 50%, ${corFaixa}10 75%)`, backgroundSize: '400px 100%', animation: 'resShimmer 1.2s infinite 0.15s' }}/>
-            <div style={{ height: 10, borderRadius: 99, width: '55%', background: `linear-gradient(90deg, ${corFaixa}08 25%, ${corFaixa}15 50%, ${corFaixa}08 75%)`, backgroundSize: '400px 100%', animation: 'resShimmer 1.2s infinite 0.3s' }}/>
-          </div>
-
-          <div style={{ fontSize: 10, color: '#aaa', fontWeight: 500, letterSpacing: 0.5 }}>Analisando resultado...</div>
-        </div>
-      )}
-
-      {/* Reveal phase — card animado */}
-      {!isLoading && (
-        <div style={{ background: `linear-gradient(135deg,${corFaixa}12,${corFaixa}05)`, border: `1.5px solid ${corFaixa}35`, borderRadius: 18, overflow: 'hidden', animation: 'resFadeUp 0.5s ease' }}>
-
-          {/* Topo com badge de perfil */}
-          <div style={{ padding: '14px 14px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ animation: 'resFadeUp 0.4s ease 0.1s both' }}>
-              <div style={{ fontSize: 8, fontWeight: 700, color: corFaixa, textTransform: 'uppercase' as const, letterSpacing: 1.5, marginBottom: 4 }}>
-                Seu Perfil
-              </div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#1a1a2e', lineHeight: 1.2 }}>
-                {b.resultPerfil || faixa?.label || 'Resultado'}
-              </div>
-            </div>
-
-            {/* Círculo do score com animação de entrada */}
-            <div style={{
-              width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
-              background: `linear-gradient(135deg, ${corFaixa}, ${corFaixa}cc)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: `0 4px 20px ${corFaixa}60`,
-              animation: 'resSpinIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s both, resPulse 2s ease 1s infinite',
-            }}>
-              <span style={{ fontSize: 20, fontWeight: 900, color: '#fff', fontFamily: 'monospace' }}>
-                {contadorAtual}
-              </span>
-            </div>
-          </div>
-
-          {/* Barra de progresso animada */}
-          {estilo === 'barra' && (
-            <div style={{ padding: '0 14px 12px', animation: 'resFadeUp 0.4s ease 0.2s both' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 9, color: '#999' }}>Score</span>
-                <span style={{ fontSize: 9, fontWeight: 700, color: corFaixa }}>{contadorAtual}/100</span>
-              </div>
-              <div style={{ height: 10, background: 'rgba(0,0,0,0.06)', borderRadius: 99, overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%', width: `${barraWidth}%`,
-                  background: `linear-gradient(90deg, ${corFaixa}cc, ${corFaixa})`,
-                  borderRadius: 99, position: 'relative',
-                  boxShadow: `0 0 14px ${corFaixa}80`,
-                  transition: 'none',
-                }}>
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', background: 'rgba(255,255,255,0.3)', borderRadius: '99px 99px 0 0' }}/>
-                  {/* Brilho animado percorrendo a barra */}
-                  <div style={{
-                    position: 'absolute', top: 0, bottom: 0, width: 20,
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)',
-                    right: 0, borderRadius: 99,
-                  }}/>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Circular animado */}
-          {estilo === 'circular' && (
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 12px', animation: 'resFadeUp 0.4s ease 0.2s both' }}>
-              <div style={{ position: 'relative', width: 80, height: 80 }}>
-                <svg width="80" height="80" viewBox="0 0 80 80">
-                  <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="8"/>
-                  <circle cx="40" cy="40" r="34" fill="none" stroke={corFaixa} strokeWidth="8"
-                    strokeDasharray="213.6"
-                    strokeDashoffset={213.6 - (score / 100) * 213.6 * ((score - contadorAtual <= 1) ? 1 : contadorAtual / score)}
-                    strokeLinecap="round" transform="rotate(-90 40 40)"
-                    style={{ transition: 'none' }}
-                  />
-                </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 18, fontWeight: 900, color: corFaixa, fontFamily: 'monospace', lineHeight: 1 }}>{contadorAtual}</span>
-                  <span style={{ fontSize: 8, color: '#aaa' }}>/100</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Velocímetro */}
-          {estilo === 'velocimetro' && (
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 10px', animation: 'resFadeUp 0.4s ease 0.2s both' }}>
-              <GaugeChart score={contadorAtual} cor={corFaixa} size={110}/>
-            </div>
-          )}
-
-          {/* Descrição */}
-          {b.resultDescricao && (
-            <div style={{ padding: '0 14px 10px', fontSize: 10, color: '#666', lineHeight: 1.6, animation: 'resFadeUp 0.4s ease 0.35s both' }}>
-              {b.resultDescricao}
-            </div>
-          )}
-
-          {/* Badges de faixas */}
-          <div style={{ padding: '0 14px 14px', display: 'flex', gap: 5, flexWrap: 'wrap' as const, animation: 'resFadeUp 0.4s ease 0.45s both' }}>
-            {faixas.map((f, i) => {
-              const ativo = score >= f.min && score <= f.max
-              return (
-                <div key={i} style={{
-                  padding: '4px 10px', borderRadius: 99,
-                  background: ativo ? f.cor : `${f.cor}12`,
-                  border: `1px solid ${f.cor}${ativo ? 'ff' : '35'}`,
-                  animation: ativo ? `resBadgePop 0.5s cubic-bezier(0.34,1.56,0.64,1) ${0.5 + i * 0.1}s both` : 'none',
-                }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: ativo ? '#fff' : f.cor }}>{f.label}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function RenderNiveis({ b }: { b: BlockItem }) {
-  const score = b.resultScore ?? 72
-  const faixas = b.resultFaixas || [{min:0,max:33,label:'Nível 1',cor:'#4f8ef7'},{min:34,max:66,label:'Nível 2',cor:'#4f8ef7'},{min:67,max:100,label:'Nível 3',cor:'#4f8ef7'}]
-  const ativoIdx = faixas.findIndex(f => score >= f.min && score <= f.max)
-
-  const [fase, setFase] = useState<'loading'|'reveal'>('loading')
-  const [alturas, setAlturas] = useState<number[]>(faixas.map(() => 0))
-  const [scores, setScores] = useState<number[]>(faixas.map(() => 0))
-
-  useEffect(() => {
-    setFase('loading')
-    setAlturas(faixas.map(() => 0))
-    setScores(faixas.map(() => 0))
-    const t = setTimeout(() => setFase('reveal'), 1200)
-    return () => clearTimeout(t)
-  }, [score, JSON.stringify(b.resultFaixas)])
-
-  useEffect(() => {
-    if (fase !== 'reveal') return
-    const duration = 1000
-    const steps = 50
-    const interval = duration / steps
-    let current = 0
-    const timer = setInterval(() => {
-      current++
-      const progress = 1 - Math.pow(1 - current / steps, 3)
-      setAlturas(faixas.map((f, i) => {
-        const isAtivo = i === ativoIdx
-        const isPast = i < ativoIdx
-        const targetPct = isPast ? 100 : isAtivo ? ((score - f.min) / Math.max(f.max - f.min, 1)) * 100 : 0
-        return Math.max(targetPct * progress, isAtivo ? 20 * progress : 0)
-      }))
-      setScores(faixas.map((_, i) => i === ativoIdx ? Math.round(score * progress) : 0))
-      if (current >= steps) clearInterval(timer)
-    }, interval)
-    return () => clearInterval(timer)
-  }, [fase])
-
-  const isLoading = fase === 'loading'
-
-  return (
-    <div style={{ padding: '10px 14px' }}>
-      <style>{`
-        @keyframes nvSpinner { to { transform: rotate(360deg) } }
-        @keyframes nvFadeUp { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes nvShimmer { 0%{background-position:-200px 0} 100%{background-position:200px 0} }
-        @keyframes nvBadgePop { 0%{transform:scale(0) translateY(8px);opacity:0} 70%{transform:scale(1.2) translateY(-2px)} 100%{transform:scale(1) translateY(0);opacity:1} }
-        @keyframes nvGlow { 0%,100%{box-shadow:0 0 0 0 rgba(79,142,247,0)} 50%{box-shadow:0 0 16px 4px rgba(79,142,247,0.35)} }
-      `}</style>
-
-      {/* LOADING */}
-      {isLoading && (
-        <div style={{ padding: '20px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-          {/* Spinner */}
-          <div style={{ position: 'relative', width: 48, height: 48 }}>
-            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '3px solid #f0f0f8' }}/>
-            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '3px solid transparent', borderTopColor: faixas[ativoIdx >= 0 ? ativoIdx : 0]?.cor || '#4f8ef7', animation: 'nvSpinner 0.8s linear infinite' }}/>
-            <div style={{ position: 'absolute', inset: 8, borderRadius: '50%', border: '2px solid transparent', borderTopColor: `${faixas[ativoIdx >= 0 ? ativoIdx : 0]?.cor || '#4f8ef7'}50`, animation: 'nvSpinner 1.3s linear infinite reverse' }}/>
-          </div>
-
-          {/* Skeleton das barras */}
-          <div style={{ display: 'flex', gap: 10, width: '100%', justifyContent: 'center' }}>
-            {faixas.map((f, i) => (
-              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: '100%', height: 80, borderRadius: 12, background: `linear-gradient(90deg, #f0f0f8 25%, #e8e8f0 50%, #f0f0f8 75%)`, backgroundSize: '400px 100%', animation: `nvShimmer 1.2s infinite ${i * 0.15}s` }}/>
-                <div style={{ height: 8, width: '70%', borderRadius: 99, background: `linear-gradient(90deg, #f0f0f8 25%, #e8e8f0 50%, #f0f0f8 75%)`, backgroundSize: '400px 100%', animation: `nvShimmer 1.2s infinite ${i * 0.15 + 0.1}s` }}/>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ fontSize: 10, color: '#bbb', fontWeight: 500 }}>Calculando seu nível...</div>
-        </div>
-      )}
-
-      {/* REVEAL */}
-      {!isLoading && (
-        <div style={{ animation: 'nvFadeUp 0.4s ease' }}>
-          {/* Título do ativo */}
-          <div style={{ textAlign: 'center', marginBottom: 14, animation: 'nvFadeUp 0.4s ease 0.1s both' }}>
-            {ativoIdx >= 0 && (
-              <>
-                <div style={{ fontSize: 8, fontWeight: 700, color: faixas[ativoIdx].cor, textTransform: 'uppercase' as const, letterSpacing: 1.5, marginBottom: 3 }}>Seu Nível</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>{faixas[ativoIdx].label}</div>
-              </>
-            )}
-          </div>
-
-          {/* Barras */}
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 12 }}>
-            {faixas.map((f, i) => {
-              const isAtivo = i === ativoIdx
-              const isPast = i < ativoIdx
-              const cor = f.cor || '#4f8ef7'
-              const barHeight = 90
-              const fillH = (alturas[i] / 100) * barHeight
-
-              return (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, animation: `nvFadeUp 0.5s ease ${0.15 + i * 0.1}s both` }}>
-                  {/* Label topo */}
-                  <div style={{
-                    fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
-                    color: isAtivo ? '#fff' : isPast ? cor : '#bbb',
-                    background: isAtivo ? cor : isPast ? `${cor}20` : '#f0f0f8',
-                    border: `1px solid ${isAtivo || isPast ? `${cor}40` : '#eee'}`,
-                    transition: 'all 0.3s',
-                    animation: isAtivo ? `nvBadgePop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.6s both` : 'none',
-                  }}>
-                    {f.label}
-                  </div>
-
-                  {/* Barra vertical */}
-                  <div style={{
-                    width: '100%', height: barHeight, borderRadius: 12,
-                    background: '#f0f0f8', overflow: 'hidden', position: 'relative',
-                    boxShadow: isAtivo ? `0 0 0 2px ${cor}50` : 'none',
-                    transition: 'box-shadow 0.3s',
-                  }}>
-                    {/* Fill animado */}
-                    <div style={{
-                      position: 'absolute', bottom: 0, left: 0, right: 0,
-                      height: `${fillH}px`,
-                      background: isAtivo
-                        ? `linear-gradient(180deg, ${cor}bb, ${cor})`
-                        : isPast
-                        ? `linear-gradient(180deg, ${cor}55, ${cor}80)`
-                        : 'transparent',
-                      borderRadius: 12,
-                      boxShadow: isAtivo ? `0 -6px 20px ${cor}60` : 'none',
-                      transition: 'none',
-                    }}>
-                      {/* Brilho interno */}
-                      {(isAtivo || isPast) && (
-                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '35%', background: 'rgba(255,255,255,0.25)', borderRadius: '12px 12px 0 0' }}/>
-                      )}
-                    </div>
-
-                    {/* Score badge dentro da barra ativa */}
-                    {isAtivo && scores[i] > 0 && (
-                      <div style={{
-                        position: 'absolute', bottom: 8, left: 0, right: 0,
-                        display: 'flex', justifyContent: 'center',
-                        animation: 'nvBadgePop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.8s both',
-                      }}>
-                        <div style={{
-                          background: '#fff', borderRadius: 7, padding: '2px 7px',
-                          fontSize: 11, fontWeight: 900, color: cor,
-                          boxShadow: `0 2px 10px ${cor}50`,
-                        }}>
-                          {scores[i]}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Check para barras passadas */}
-                    {isPast && (
-                      <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', animation: 'nvFadeUp 0.3s ease 0.5s both' }}>
-                        <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 2px 8px ${cor}40` }}>
-                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke={cor} strokeWidth="2" strokeLinecap="round">
-                            <path d="M2 5l2 2 4-4"/>
-                          </svg>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Range embaixo */}
-                  <div style={{ fontSize: 8, color: isAtivo ? cor : '#bbb', fontWeight: isAtivo ? 700 : 400 }}>
-                    {f.min}–{f.max}
-                  </div>
-
-                  {/* Descrição do nível */}
-                  {(f as any).desc && (
-                    <div style={{
-                      fontSize: 9, color: isAtivo ? '#444' : '#bbb',
-                      textAlign: 'center', lineHeight: 1.4,
-                      fontWeight: isAtivo ? 600 : 400,
-                      animation: isAtivo ? `nvFadeUp 0.4s ease ${0.5 + i * 0.1}s both` : 'none',
-                      maxWidth: '100%', overflow: 'hidden',
-                    }}>
-                      {(f as any).desc}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Descrição geral */}
-          {b.resultDescricao && (
-            <div style={{ fontSize: 10, color: '#666', lineHeight: 1.6, textAlign: 'center', padding: '0 4px', animation: 'nvFadeUp 0.4s ease 0.6s both' }}>
-              {b.resultDescricao}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function RenderBotao({ b }: { b: BlockItem }) {
   const r = b.botaoBorderRadius ?? 12
   const py = b.botaoTamanho === 'sm' ? 8 : b.botaoTamanho === 'lg' ? 16 : 12
   const fs = b.botaoTamanho === 'sm' ? '10px' : b.botaoTamanho === 'lg' ? '14px' : '12px'
   const shadow = b.botaoSombra ? `0 4px 20px ${b.botaoCor || '#7c5cfc'}55` : 'none'
-  const animacao = (b as any).botaoAnimacao || 'nenhuma'
-  const animStyle = animacao === 'pulsar' ? { animation: 'btnPulse 1.5s ease-in-out infinite' } : animacao === 'aparecer' ? { animation: 'btnAppear 0.5s ease forwards' } : animacao === 'balanco' ? { animation: 'btnShake 0.6s ease-in-out infinite' } : {}
   return (
     <div style={{ padding: '8px 16px' }}>
-      <style>{`@keyframes btnPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}@keyframes btnAppear{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@keyframes btnShake{0%,100%{transform:rotate(0)}20%{transform:rotate(-2deg)}40%{transform:rotate(2deg)}60%{transform:rotate(-1deg)}80%{transform:rotate(1deg)}}`}</style>
-      <button style={{ width:'100%', padding:`${py}px`, borderRadius:r, background:b.botaoCor||'linear-gradient(135deg,#7c5cfc,#a78bfa)', border:'none', color:b.botaoTextoCor||'#fff', fontSize:fs, fontWeight:700, cursor:'pointer', boxShadow:shadow, display:'flex', alignItems:'center', justifyContent:'center', gap:6, ...animStyle }}>
+      <button style={{ width:'100%', padding:`${py}px`, borderRadius:r, background:b.botaoCor||'linear-gradient(135deg,#7c5cfc,#a78bfa)', border:'none', color:b.botaoTextoCor||'#fff', fontSize:fs, fontWeight:700, cursor:'pointer', boxShadow:shadow, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
         {b.botaoIcone && <span>{b.botaoIcone}</span>}
         {b.botaoTexto || 'Continuar →'}
       </button>
@@ -1022,24 +410,6 @@ function RenderImagem({ b }: { b: BlockItem }) {
   )
 }
 
-function RenderVideo({ b }: { b: BlockItem }) {
-  const url=b.videoFile||b.videoUrl
-  return (
-    <div style={{ padding:'6px 16px' }}>
-      {url&&!url.includes('youtube')&&!url.includes('youtu.be')?<video src={url} controls style={{ width:'100%', borderRadius:12, maxHeight:150 }}/>:<div style={{ height:120, borderRadius:12, overflow:'hidden', position:'relative' }}>{b.videoThumb?<img src={b.videoThumb} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>:<div style={{ width:'100%', height:'100%', background:'linear-gradient(135deg,#1a1a2e,#2a2b3e)' }}/>}<div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ width:44, height:44, borderRadius:'50%', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="18" height="18" viewBox="0 0 18 18" fill="white"><polygon points="6 3 15 9 6 15"/></svg></div></div></div>}
-    </div>
-  )
-}
-
-function RenderAudio({ b }: { b: BlockItem }) {
-  const url=b.audioFile||b.audioUrl
-  return (
-    <div style={{ padding:'6px 16px' }}>
-      {url?<audio src={url} controls style={{ width:'100%' }}/>:<div style={{ background:'#f5f5fa', border:'1px solid #e8e8f2', borderRadius:12, padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}><div style={{ width:36, height:36, borderRadius:'50%', background:'rgba(124,92,252,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#7c5cfc" strokeWidth="1.5"><path d="M8 1v14M5 3.5v9M2 6v4M11 3.5v9M14 6v4"/></svg></div><div><div style={{ fontSize:11, fontWeight:600, color:'#1a1a2e' }}>{b.audioTitulo||'Áudio'}</div><div style={{ fontSize:9, color:'#bbb' }}>Adicionar arquivo de áudio</div></div></div>}
-    </div>
-  )
-}
-
 function RenderCronometro({ b }: { b: BlockItem }) {
   const totalSeconds = (b.cronoHoras ?? 0) * 3600 + (b.cronoMinutos ?? 8) * 60 + (b.cronoSegundos ?? 47)
   const [remaining, setRemaining] = useState(totalSeconds)
@@ -1050,21 +420,13 @@ function RenderCronometro({ b }: { b: BlockItem }) {
   const s = String(remaining % 60).padStart(2, '0')
   const cor = b.cronoCor || '#7c5cfc'
   const bgCor = b.cronoBgCor || '#1a1a2e'
-  const estilo = b.cronoEstilo || 'digital'
-  if (estilo === 'minimalista') return (
-    <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12, background: '#f8f8fc', borderRadius: 12, border: '1px solid #eee' }}>
-      <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', letterSpacing: 2 }}>{h}:{m}:{s}</div>
-      <div style={{ width: 1, height: 28, background: '#eee' }}/>
-      <div style={{ fontSize: 11, color: '#666', lineHeight: 1.4 }}>{b.cronoTexto || 'Oferta por tempo limitado!'}</div>
-    </div>
-  )
   return (
     <div style={{ padding: '10px 16px', textAlign: 'center' }}>
       <div style={{ fontSize: 9, color: '#999', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>{b.cronoTexto || 'OFERTA EXPIRA EM'}</div>
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
         {[{v:h,l:'HRS'},{v:m,l:'MIN'},{v:s,l:'SEG'}].map((n, i) => (
           <React.Fragment key={i}>
-            <div style={{ background: bgCor, borderRadius: estilo === 'arredondado' ? 14 : 10, padding: '8px 12px', minWidth: 44, boxShadow: `0 4px 16px ${cor}20` }}>
+            <div style={{ background: bgCor, borderRadius: 10, padding: '8px 12px', minWidth: 44, boxShadow: `0 4px 16px ${cor}20` }}>
               <div style={{ fontSize: 20, fontWeight: 800, color: cor, lineHeight: 1 }}>{n.v}</div>
               <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', marginTop: 3, letterSpacing: 1 }}>{n.l}</div>
             </div>
@@ -1077,13 +439,12 @@ function RenderCronometro({ b }: { b: BlockItem }) {
 }
 
 function RenderDepoimento({ b }: { b: BlockItem }) {
-  const layout=b.depLayout||'card'
   return (
     <div style={{ padding:'8px 16px' }}>
-      <div style={{ background:b.depCardCor||'#f9f9fc', border:'1px solid #eee', borderRadius:layout==='moderno'?16:12, padding:layout==='compacto'?8:12 }}>
-        <div style={{ display:'flex', gap:8, marginBottom:layout==='compacto'?6:8, alignItems:layout==='moderno'?'center':'flex-start' }}>
-          {b.depAvatar?<img src={b.depAvatar} style={{ width:layout==='moderno'?40:32, height:layout==='moderno'?40:32, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>:<div style={{ width:layout==='moderno'?40:32, height:layout==='moderno'?40:32, borderRadius:'50%', background:'linear-gradient(135deg,#7c5cfc,#a78bfa)', flexShrink:0 }}/>}
-          <div><div style={{ fontSize:11, fontWeight:600, color:'#1a1a2e' }}>{b.depNome||'Nome do cliente'}</div><div style={{ color:'#f97316', fontSize:10 }}>{'★'.repeat(b.depEstrelas??5)}{'☆'.repeat(5-(b.depEstrelas??5))}</div></div>
+      <div style={{ background:b.depCardCor||'#f9f9fc', border:'1px solid #eee', borderRadius:12, padding:12 }}>
+        <div style={{ display:'flex', gap:8, marginBottom:8, alignItems:'flex-start' }}>
+          {b.depAvatar?<img src={b.depAvatar} style={{ width:32, height:32, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>:<div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#7c5cfc,#a78bfa)', flexShrink:0 }}/>}
+          <div><div style={{ fontSize:11, fontWeight:600, color:'#1a1a2e' }}>{b.depNome||'Nome do cliente'}</div><div style={{ color:'#f97316', fontSize:10 }}>{'★'.repeat(b.depEstrelas??5)}</div></div>
         </div>
         <div style={{ fontSize:10, color:'#555', lineHeight:1.6, fontStyle:'italic' }}>"{b.depTexto||'Depoimento incrível aqui.'}"</div>
       </div>
@@ -1120,7 +481,6 @@ function RenderCheckout({ b }: { b: BlockItem }) {
       <div style={{ display:'flex', justifyContent:'center', gap:8 }}>
         {b.checkoutPix!==false&&<div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:6, padding:'3px 8px', fontSize:9, color:'#16a34a', fontWeight:600 }}>Pix</div>}
         {b.checkoutCartao!==false&&<div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:6, padding:'3px 8px', fontSize:9, color:'#1d4ed8', fontWeight:600 }}>Cartão</div>}
-        <div style={{ background:'#fafafa', border:'1px solid #eee', borderRadius:6, padding:'3px 8px', fontSize:9, color:'#666' }}>Boleto</div>
       </div>
       {b.checkoutSeguranca&&<div style={{ fontSize:9, color:'#aaa', textAlign:'center' }}>{b.checkoutSeguranca}</div>}
     </div>
@@ -1128,13 +488,8 @@ function RenderCheckout({ b }: { b: BlockItem }) {
 }
 
 function RenderBeneficios({ b }: { b: BlockItem }) {
-  const items=b.benefItems||['Acesso imediato','Suporte 24h','Atualizações grátis']; const cor=b.benefCor||'#22d387'; const icone=b.benefIcone||'check'
-  function renderIc() {
-    if(icone==='estrela') return <span style={{ color:cor, fontSize:12 }}>★</span>
-    if(icone==='seta') return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={cor} strokeWidth="2" strokeLinecap="round"><path d="M2 6h8M7 3l3 3-3 3"/></svg>
-    return <div style={{ width:16, height:16, borderRadius:'50%', background:`${cor}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke={cor} strokeWidth="2" strokeLinecap="round"><path d="M1 4l2 2 4-4"/></svg></div>
-  }
-  return <div style={{ padding:'8px 16px', display:'flex', flexDirection:'column', gap:8 }}>{items.map((item,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>{renderIc()}<span style={{ fontSize:10, color:'#444' }}>{item}</span></div>)}</div>
+  const items=b.benefItems||['Acesso imediato','Suporte 24h','Atualizações grátis']; const cor=b.benefCor||'#22d387'
+  return <div style={{ padding:'8px 16px', display:'flex', flexDirection:'column', gap:8 }}>{items.map((item,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}><div style={{ width:16, height:16, borderRadius:'50%', background:`${cor}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke={cor} strokeWidth="2" strokeLinecap="round"><path d="M1 4l2 2 4-4"/></svg></div><span style={{ fontSize:10, color:'#444' }}>{item}</span></div>)}</div>
 }
 
 function RenderCarregamento({ b }: { b: BlockItem }) {
@@ -1150,7 +505,7 @@ function RenderCarregamento({ b }: { b: BlockItem }) {
   return (
     <div style={{ padding: '16px' }}>
       <div style={{ height: 10, background: `${cor}20`, borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
-        <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg,${cor},${cor}cc)`, borderRadius: 99, transition: 'width 0.03s linear', boxShadow: `0 0 10px ${cor}80` }}/>
+        <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg,${cor},${cor}cc)`, borderRadius: 99, transition: 'width 0.03s linear' }}/>
       </div>
       <div style={{ fontSize: 11, color: '#888', textAlign: 'center' }}>{b.loadTexto || 'Analisando respostas...'}</div>
     </div>
@@ -1164,203 +519,23 @@ function RenderRedirecionar({ b }: { b: BlockItem }) {
 function RenderMetaPixel({ b }: { b: BlockItem }) {
   const ativo = b.pixelAtivo !== false
   const evento = b.pixelEvento || 'PageView'
-  const eventoLabel = evento === 'Custom' ? (b.pixelEventoCustom || 'Custom') : evento
-
-  const eventColors: Record<string,string> = {
-    PageView:'#1877f2', Lead:'#22d387', Purchase:'#f59e0b',
-    ViewContent:'#a78bfa', InitiateCheckout:'#f97316', CompleteRegistration:'#2dd4bf',
-    Custom:'#7c5cfc', Contact:'#f43f5e', Subscribe:'#22d387',
-  }
-  const cor = eventColors[evento] || '#1877f2'
-
+  const cor = '#1877f2'
   return (
     <div style={{ padding:'6px 14px' }}>
-      <div style={{ background:'rgba(24,119,242,0.05)', border:'1px solid rgba(24,119,242,0.15)', borderRadius:14, overflow:'hidden' }}>
-        {/* Header */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:'1px solid rgba(24,119,242,0.08)' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{ width:30, height:30, borderRadius:8, background:'#1877f2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-            </div>
-            <div>
-              <div style={{ fontSize:11, fontWeight:700, color:'#1a1a2e' }}>Meta Pixel</div>
-              <div style={{ fontSize:9, color:'#999' }}>{b.pixelId ? `ID: ${b.pixelId}` : 'Sem ID configurado'}</div>
-            </div>
-          </div>
-          {/* Status ativo/inativo */}
-          <div style={{ display:'flex', alignItems:'center', gap:5, padding:'3px 9px', borderRadius:99, background: ativo ? 'rgba(34,211,135,0.1)' : 'rgba(255,255,255,0.05)', border:`1px solid ${ativo ? 'rgba(34,211,135,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
-            <div style={{ width:5, height:5, borderRadius:'50%', background: ativo ? '#22d387' : '#bbb' }}/>
-            <span style={{ fontSize:9, fontWeight:600, color: ativo ? '#22d387' : '#bbb' }}>{ativo ? 'Ativo' : 'Inativo'}</span>
-          </div>
-        </div>
-        {/* Evento */}
-        <div style={{ padding:'10px 14px', display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:32, height:32, borderRadius:8, background:`${cor}15`, border:`1px solid ${cor}30`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={cor} strokeWidth="1.8" strokeLinecap="round">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-            </svg>
+      <div style={{ background:'rgba(24,119,242,0.05)', border:'1px solid rgba(24,119,242,0.15)', borderRadius:14, padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ width:28, height:28, borderRadius:7, background:'#1877f2', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
           </div>
           <div>
-            <div style={{ fontSize:9, color:'#999', marginBottom:2 }}>Evento disparado</div>
-            <div style={{ fontSize:12, fontWeight:700, color: cor }}>{eventoLabel}</div>
-          </div>
-          {!b.pixelId && (
-            <div style={{ marginLeft:'auto', fontSize:9, color:'#f59e0b', background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:6, padding:'2px 7px' }}>
-              Configure o ID →
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function RenderTransformacao({ b }: { b: BlockItem }) {
-  const corAntes = (b as any).transCorAntes || '#6b7280'
-  const corDepois = (b as any).transCorDepois || '#4f8ef7'
-  return (
-    <div style={{ padding: '8px 14px' }}>
-      <div style={{ display: 'flex', gap: 8, borderRadius: 14, overflow: 'hidden', border: '1px solid #eee', background: '#fafafa' }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '6px 10px', textAlign: 'center', background: '#f0f0f5', borderBottom: '1px solid #eee' }}>
-            <span style={{ fontSize: 9, fontWeight: 800, color: '#888', textTransform: 'uppercase' as const, letterSpacing: 1 }}>ANTES</span>
-          </div>
-          <div style={{ height: 80, background: '#f5f5fa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {(b as any).transImagemAntes ? <img src={(b as any).transImagemAntes} style={{ width:'100%', height:'100%', objectFit:'cover' as const, filter:'grayscale(80%)' }}/> : <span style={{ fontSize:8, color:'#ccc' }}>Imagem Antes</span>}
-          </div>
-          <div style={{ padding: '6px 8px', fontSize:8, color:'#888', textAlign:'center' }}>{(b as any).transTextoAntes || 'Antes da solução'}</div>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', width:24, background:'#eee' }}>
-          <div style={{ width:20, height:20, borderRadius:'50%', background:'#fff', border:'1px solid #ddd', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#aaa" strokeWidth="1.5" strokeLinecap="round"><path d="M2 5h6M5 2l3 3-3 3"/></svg>
+            <div style={{ fontSize:11, fontWeight:700, color:'#1a1a2e' }}>Meta Pixel</div>
+            <div style={{ fontSize:9, color:'#999' }}>{evento}</div>
           </div>
         </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '6px 10px', textAlign: 'center', background: `${corDepois}15`, borderBottom: `1px solid ${corDepois}20` }}>
-            <span style={{ fontSize: 9, fontWeight: 800, color: corDepois, textTransform: 'uppercase' as const, letterSpacing: 1 }}>DEPOIS</span>
-          </div>
-          <div style={{ height: 80, background: '#f5f5fa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {(b as any).transImagemDepois ? <img src={(b as any).transImagemDepois} style={{ width:'100%', height:'100%', objectFit:'cover' as const }}/> : <span style={{ fontSize:8, color:'#ccc' }}>Imagem Depois</span>}
-          </div>
-          <div style={{ padding: '6px 8px', fontSize:8, color:'#888', textAlign:'center' }}>{(b as any).transTextoDepois || 'Depois da solução'}</div>
+        <div style={{ display:'flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:99, background: ativo ? 'rgba(34,211,135,0.1)' : 'rgba(255,255,255,0.05)', border:`1px solid ${ativo ? 'rgba(34,211,135,0.3)' : 'rgba(0,0,0,0.1)'}` }}>
+          <div style={{ width:5, height:5, borderRadius:'50%', background: ativo ? '#22d387' : '#bbb' }}/>
+          <span style={{ fontSize:9, fontWeight:600, color: ativo ? '#22d387' : '#bbb' }}>{ativo ? 'Ativo' : 'Inativo'}</span>
         </div>
-      </div>
-    </div>
-  )
-}
-
-function RenderCarrossel({ b }: { b: BlockItem }) {
-  const [current, setCurrent] = useState(0)
-  const imagens: string[] = (b as any).carrosselImagens || []
-  const h = (b as any).carrosselAltura || 160
-  const r = (b as any).carrosselBorderRadius ?? 12
-  const autoplay = (b as any).carrosselAutoplay ?? false
-  const total = imagens.length || 1
-  useEffect(() => { if(!autoplay||imagens.length<2) return; const t=setInterval(()=>setCurrent(c=>(c+1)%imagens.length),3000); return ()=>clearInterval(t) }, [autoplay,imagens.length])
-  return (
-    <div style={{ padding:'6px 14px' }}>
-      <div style={{ position:'relative', borderRadius:r, overflow:'hidden', height:h, background:'#f5f5fa', border:'1px solid #eee' }}>
-        {imagens.length>0?<img src={imagens[current]} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' as const }}/>:<div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ fontSize:9, color:'#ccc' }}>Adicione imagens</span></div>}
-        {imagens.length>1&&<>
-          <button onClick={()=>setCurrent(c=>(c-1+total)%total)} style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', width:28, height:28, borderRadius:'50%', background:'rgba(255,255,255,0.9)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#555" strokeWidth="1.5" strokeLinecap="round"><path d="M7 2L4 5l3 3"/></svg></button>
-          <button onClick={()=>setCurrent(c=>(c+1)%total)} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', width:28, height:28, borderRadius:'50%', background:'rgba(255,255,255,0.9)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#555" strokeWidth="1.5" strokeLinecap="round"><path d="M3 2l3 3-3 3"/></svg></button>
-        </>}
-      </div>
-      {imagens.length>1&&<div style={{ display:'flex', justifyContent:'center', gap:5, marginTop:8 }}>{imagens.map((_,i)=><div key={i} onClick={()=>setCurrent(i)} style={{ width:i===current?16:6, height:6, borderRadius:99, background:i===current?'#7c5cfc':'#ddd', cursor:'pointer', transition:'all 0.2s' }}/>)}</div>}
-    </div>
-  )
-}
-
-function RenderNumero({ b }: { b: BlockItem }) {
-  const valorInicial = (b as any).numeroValorInicial ?? 0
-  const valorFinal = (b as any).numeroValorFinal ?? 100
-  const duracao = (b as any).numeroDuracao ?? 1500
-  const formato = (b as any).numeroFormato || 'numero'
-  const tamanho = (b as any).numeroTamanho || 64
-  const alinhamento = (b as any).numeroAlinhamento || 'center'
-  const decimais = (b as any).numeroDecimais ?? 0
-  const cor = (b as any).numeroCor || '#7c5cfc'
-  const subtitulo = (b as any).numeroSubtitulo || ''
-  const [atual, setAtual] = useState(valorInicial)
-
-  useEffect(() => {
-    setAtual(valorInicial)
-    const steps = 60
-    const stepDur = duracao / steps
-    let cur = 0
-    const timer = setInterval(() => {
-      cur++
-      const progress = 1 - Math.pow(1 - cur / steps, 3)
-      setAtual(valorInicial + (valorFinal - valorInicial) * progress)
-      if (cur >= steps) clearInterval(timer)
-    }, stepDur)
-    return () => clearInterval(timer)
-  }, [valorInicial, valorFinal, duracao])
-
-  function formatarNumero(n: number): string {
-    const fixed = n.toFixed(decimais)
-    const [int, dec] = fixed.split('.')
-    const intFormatado = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-    const num = dec !== undefined ? `${intFormatado},${dec}` : intFormatado
-    if (formato === 'porcentagem') return `${num}%`
-    if (formato === 'moeda') return `R$ ${num}`
-    return num
-  }
-
-  return (
-    <div style={{ padding: '16px 16px', textAlign: alinhamento as any }}>
-      <div style={{ fontSize: tamanho, fontWeight: 900, color: cor, lineHeight: 1, fontFamily: '"Inter", monospace', letterSpacing: -2, transition: 'none' }}>
-        {formatarNumero(atual)}
-      </div>
-      {subtitulo && (
-        <div style={{ fontSize: 13, color: '#888', marginTop: 6, fontWeight: 500 }}>{subtitulo}</div>
-      )}
-    </div>
-  )
-}
-
-function RenderDestaques({ b }: { b: BlockItem }) {
-  const itens = (b as any).destaquesItens || [
-    { icone: '⭐', titulo: 'Destaque 1', subtitulo: 'Descrição do destaque' },
-    { icone: '🔥', titulo: 'Destaque 2', subtitulo: 'Descrição do destaque' },
-  ]
-  const layout = (b as any).destaquesLayout || 'cards'
-  const cor = (b as any).destaquesCor || '#7c5cfc'
-  const colunas = (b as any).destaquesColunas || '2'
-
-  if (layout === 'lista') {
-    return (
-      <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {itens.map((item: any, i: number) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: '#f9f9fc', border: '1px solid #eee' }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${cor}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
-              {item.icone || '⭐'}
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>{item.titulo}</div>
-              {item.subtitulo && <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{item.subtitulo}</div>}
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  return (
-    <div style={{ padding: '8px 16px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: colunas === '1' ? '1fr' : colunas === '3' ? 'repeat(3,1fr)' : '1fr 1fr', gap: 10 }}>
-        {itens.map((item: any, i: number) => (
-          <div key={i} style={{ padding: '14px 12px', borderRadius: 14, background: '#f9f9fc', border: '1px solid #eee', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: `${cor}12`, border: `1.5px solid ${cor}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-              {item.icone || '⭐'}
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e', lineHeight: 1.3 }}>{item.titulo}</div>
-            {item.subtitulo && <div style={{ fontSize: 10, color: '#888', lineHeight: 1.4 }}>{item.subtitulo}</div>}
-            {item.valor && (
-              <div style={{ fontSize: 16, fontWeight: 800, color: cor, marginTop: 2 }}>{item.valor}</div>
-            )}
-          </div>
-        ))}
       </div>
     </div>
   )
@@ -1375,14 +550,8 @@ function BlockRenderer({ block }: { block: BlockItem }) {
     case 'lista': return <RenderLista b={block}/>
     case 'nota': return <RenderNota b={block}/>
     case 'quiz': return <RenderQuiz b={block}/>
-    case 'grafico': return <RenderGrafico b={block}/>
-    case 'resultado': return <RenderResultado b={block}/>
-    case 'niveis': return <RenderNiveis b={block}/>
     case 'botao': return <RenderBotao b={block}/>
-    case 'carrossel': return <RenderCarrossel b={block}/>
     case 'imagem': return <RenderImagem b={block}/>
-    case 'video': return <RenderVideo b={block}/>
-    case 'audio': return <RenderAudio b={block}/>
     case 'cronometro': return <RenderCronometro b={block}/>
     case 'depoimento': return <RenderDepoimento b={block}/>
     case 'garantia': return <RenderGarantia b={block}/>
@@ -1390,15 +559,13 @@ function BlockRenderer({ block }: { block: BlockItem }) {
     case 'checkout': return <RenderCheckout b={block}/>
     case 'beneficios': return <RenderBeneficios b={block}/>
     case 'carregamento': return <RenderCarregamento b={block}/>
-    case 'transformacao': return <RenderTransformacao b={block}/>
     case 'redirecionar': return <RenderRedirecionar b={block}/>
     case 'metapixel': return <RenderMetaPixel b={block}/>
-    case 'numero': return <RenderNumero b={block}/>
-    case 'destaques': return <RenderDestaques b={block}/>
     default: return <div style={{ padding:'10px 16px', fontSize:10, color:'#aaa' }}>{block.label}</div>
   }
 }
 
+// ── PropsPanel (mantido igual ao original) ───────────────────────────────────
 function PropsPanel({ block, onChange }: { block: BlockItem; onChange: (d: Partial<BlockItem>) => void }) {
   const s = { background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.7)' }
   const ta = (k:string, ph?:string, rows=3) => <textarea rows={rows} value={(block as any)[k]||''} onChange={e=>onChange({[k]:e.target.value})} placeholder={ph} className="w-full rounded-lg px-3 py-2 text-xs text-white resize-none outline-none" style={{...s,lineHeight:1.5}}/>
@@ -1412,39 +579,13 @@ function PropsPanel({ block, onChange }: { block: BlockItem; onChange: (d: Parti
       {block.compId==='cabecalho'&&<><Field label="Logo"><UploadButton label="Carregar logo" accept="image/*" value={block.logoFile} onChange={v=>onChange({logoFile:v})}/></Field><Field label="URL da logo">{inp('logoUrl','https://...')}</Field><Slider label="Tamanho da logo" value={block.logoSize??60} min={20} max={100} unit="%" onChange={v=>onChange({logoSize:v})}/><Field label="Posição">{seg('logoPosition',[{v:'left',l:'Esq'},{v:'center',l:'Centro'},{v:'right',l:'Dir'}],'center')}</Field><Slider label="Altura" value={block.headerHeight??52} min={36} max={80} unit="px" onChange={v=>onChange({headerHeight:v})}/><ColorPicker label="Cor de fundo" value={block.bgColor||'#ffffff'} onChange={v=>onChange({bgColor:v})}/><Field label="">{tog('Mostrar botão voltar','showBack')}</Field></>}
       {block.compId==='progresso'&&<><Slider label="Porcentagem" value={block.progress??10} min={0} max={100} unit="%" onChange={v=>onChange({progress:v})}/><ColorPicker label="Cor da barra" value={block.progressColor||'#7c5cfc'} onChange={v=>onChange({progressColor:v})}/><ColorPicker label="Cor do fundo" value={block.progressBgColor||'#f0f0f5'} onChange={v=>onChange({progressBgColor:v})}/><Slider label="Altura" value={block.progressHeight??8} min={2} max={20} unit="px" onChange={v=>onChange({progressHeight:v})}/><Field label="Estilo">{sel('progressStyle',[{v:'gradiente',l:'✨ Gradiente'},{v:'normal',l:'Normal'},{v:'listrado',l:'Listrado'},{v:'segmentado',l:'Segmentado'}],'gradiente')}</Field><Field label="">{tog('Mostrar %','showPercent')}</Field></>}
       {block.compId==='titulo'&&<><Field label="Headline">{ta('headline','Título...',2)}</Field><Field label="Subheadline">{ta('subheadline','Subtítulo...',2)}</Field><Slider label="Tamanho" value={block.headlineSize??16} min={12} max={32} unit="px" onChange={v=>onChange({headlineSize:v})}/><Field label="Peso">{seg('headlineFontWeight',[{v:'400',l:'Normal'},{v:'600',l:'Semi'},{v:'700',l:'Bold'},{v:'800',l:'Extra'}],'700')}</Field><ColorPicker label="Cor título" value={block.headlineColor||'#1a1a2e'} onChange={v=>onChange({headlineColor:v})}/><Field label="Alinhamento"><AlignPicker value={block.headlineAlign||'left'} onChange={v=>onChange({headlineAlign:v})}/></Field><Field label="">{tog('Sombra no texto','headlineShadow',false)}</Field></>}
-      {block.compId==='texto'&&<>
-        {/* Conteúdo */}
-        <Field label="Conteúdo">{ta('texto','Digite seu texto aqui...',5)}</Field>
-
-        {/* Formatação */}
-        <div className="flex flex-col gap-2">
-          <label className="text-[10px] uppercase tracking-wider font-semibold" style={{ color:'rgba(255,255,255,0.3)' }}>Formatação</label>
-          <div className="flex gap-2">
-            <button onClick={()=>onChange({textoFontWeight:block.textoFontWeight==='700'?'400':'700'})} style={{ flex:1, padding:'6px', borderRadius:8, background:block.textoFontWeight==='700'?'rgba(124,92,252,0.2)':'rgba(255,255,255,0.05)', border:`1px solid ${block.textoFontWeight==='700'?'rgba(124,92,252,0.4)':'rgba(255,255,255,0.08)'}`, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>B</button>
-            <button onClick={()=>onChange({textoItalico:!(block as any).textoItalico} as any)} style={{ flex:1, padding:'6px', borderRadius:8, background:(block as any).textoItalico?'rgba(124,92,252,0.2)':'rgba(255,255,255,0.05)', border:`1px solid ${(block as any).textoItalico?'rgba(124,92,252,0.4)':'rgba(255,255,255,0.08)'}`, color:'#fff', fontSize:13, fontStyle:'italic', cursor:'pointer' }}>I</button>
-            <button onClick={()=>onChange({textoSublinhado:!(block as any).textoSublinhado} as any)} style={{ flex:1, padding:'6px', borderRadius:8, background:(block as any).textoSublinhado?'rgba(124,92,252,0.2)':'rgba(255,255,255,0.05)', border:`1px solid ${(block as any).textoSublinhado?'rgba(124,92,252,0.4)':'rgba(255,255,255,0.08)'}`, color:'#fff', fontSize:13, textDecoration:'underline', cursor:'pointer' }}>U</button>
-          </div>
-        </div>
-
-        {/* Tamanho e linha */}
-        <Slider label="Tamanho" value={block.textoSize??14} min={10} max={32} unit="px" onChange={v=>onChange({textoSize:v})}/>
-        <Slider label="Altura da linha" value={block.textoLineHeight??1.7} min={1} max={3} unit="×" onChange={v=>onChange({textoLineHeight:v})}/>
-        <Slider label="Espaçamento letras" value={(block as any).textoLetterSpacing??0} min={-1} max={5} unit="px" onChange={v=>onChange({textoLetterSpacing:v} as any)}/>
-
-        {/* Cor e alinhamento */}
-        <ColorPicker label="Cor" value={block.textoColor||'#555555'} onChange={v=>onChange({textoColor:v})}/>
-        <Field label="Alinhamento"><AlignPicker value={block.textoAlign||'left'} onChange={v=>onChange({textoAlign:v})}/></Field>
-
-        {/* Animação */}
-        <Field label="Animação de entrada">{sel('textoAnimacao',[{v:'nenhuma',l:'Nenhuma'},{v:'aparecer',l:'✨ Aparecer'},{v:'slide',l:'→ Slide'},{v:'zoom',l:'🔍 Zoom'}],'nenhuma')}</Field>
-      </>}
+      {block.compId==='texto'&&<><Field label="Conteúdo">{ta('texto','Digite seu texto aqui...',5)}</Field><Slider label="Tamanho" value={block.textoSize??14} min={10} max={32} unit="px" onChange={v=>onChange({textoSize:v})}/><ColorPicker label="Cor" value={block.textoColor||'#555555'} onChange={v=>onChange({textoColor:v})}/><Field label="Alinhamento"><AlignPicker value={block.textoAlign||'left'} onChange={v=>onChange({textoAlign:v})}/></Field></>}
       {block.compId==='lista'&&<><Field label="Itens (um por linha)"><textarea rows={5} value={(block.itens||['Item 1','Item 2','Item 3']).join('\n')} onChange={e=>onChange({itens:e.target.value.split('\n')})} className="w-full rounded-lg px-3 py-2 text-xs text-white resize-none outline-none" style={{...s,lineHeight:1.6}}/></Field><Field label="Ícone">{sel('listaIcone',[{v:'check',l:'✓ Check'},{v:'circulo',l:'● Círculo'},{v:'seta',l:'→ Seta'},{v:'estrela',l:'★ Estrela'}],'check')}</Field><ColorPicker label="Cor do ícone" value={block.checkColor||'#7c5cfc'} onChange={v=>onChange({checkColor:v})}/></>}
       {block.compId==='nota'&&<><Field label="Texto">{ta('notaTexto','Mensagem...',3)}</Field><Field label="Tipo">{sel('notaTipo',[{v:'info',l:'Info'},{v:'aviso',l:'Aviso'},{v:'sucesso',l:'Sucesso'},{v:'atencao',l:'Atenção'}],'info')}</Field></>}
       {block.compId==='quiz'&&<>
         <Field label="Pergunta">{ta('quizPergunta','Qual é sua pergunta?',2)}</Field>
         <Slider label="Tamanho" value={block.quizPerguntaSize??12} min={10} max={20} unit="px" onChange={v=>onChange({quizPerguntaSize:v})}/>
         <Field label="Colunas"><div className="flex gap-2">{[{v:'1',l:'1 Col'},{v:'2',l:'2 Col'}].map(o=><button key={o.v} onClick={()=>onChange({quizColunas:o.v as any})} className="flex-1 py-2 rounded-lg text-xs transition-all" style={{ background:(block.quizColunas||'1')===o.v?'#7c5cfc':'#1a1b2a', color:(block.quizColunas||'1')===o.v?'#fff':'rgba(255,255,255,0.4)', border:'1px solid rgba(255,255,255,0.06)' }}>{o.l}</button>)}</div></Field>
-        <Field label="Modelo">{seg('quizModelo',[{v:'texto',l:'Texto'},{v:'texto-emoji',l:'Emoji'}],'texto')}</Field>
         <ColorPicker label="Cor selecionada" value={block.quizCorSelecionada||'#7c5cfc'} onChange={v=>onChange({quizCorSelecionada:v})}/>
         <Toggle label="Múltipla Escolha" value={block.quizMultipla??false} onChange={v=>onChange({quizMultipla:v})}/>
         <div className="flex flex-col gap-1.5">
@@ -1459,7 +600,6 @@ function PropsPanel({ block, onChange }: { block: BlockItem; onChange: (d: Parti
               <div key={i} className="flex items-center gap-2 p-2.5 rounded-xl" style={{ background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.07)' }}>
                 <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style={{ background:'rgba(124,92,252,0.2)', fontSize:8, color:'#a78bfa', fontWeight:700 }}>{i+1}</div>
                 <input value={op.titulo} onChange={e=>updateOp({titulo:e.target.value})} placeholder="Título" className="flex-1 bg-transparent text-xs text-white outline-none" style={{ minWidth:0 }}/>
-                {block.quizModelo==='texto-emoji'&&<input value={op.emoji||''} onChange={e=>updateOp({emoji:e.target.value})} placeholder="😊" className="w-8 bg-transparent text-xs outline-none text-center"/>}
                 <button onClick={removeOp} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(244,63,94,0.6)', fontSize:14 }}>×</button>
               </div>
             )
@@ -1467,227 +607,30 @@ function PropsPanel({ block, onChange }: { block: BlockItem; onChange: (d: Parti
         </div>
         <Field label="Variável">{inp('quizVariavel','nome-da-variavel')}</Field>
       </>}
-      {(block.compId==='resultado'||block.compId==='niveis')&&<>
-        <Field label="Perfil">{inp('resultPerfil','Empreendedor Iniciante')}</Field>
-        <Field label="Descrição">{ta('resultDescricao','Descrição...',2)}</Field>
-        <Slider label="Score" value={block.resultScore??72} min={0} max={100} unit="/100" onChange={v=>onChange({resultScore:v})}/>
-        {block.compId==='resultado'&&<Field label="Estilo">{seg('resultEstilo',[{v:'barra',l:'Barra'},{v:'circular',l:'Circular'},{v:'velocimetro',l:'Velocím.'}],'barra')}</Field>}
-        <div className="flex flex-col gap-2">
-          <label className="text-[10px] uppercase tracking-wider" style={{ color:'rgba(255,255,255,0.35)' }}>
-            {block.compId==='niveis' ? 'Níveis (nome + descrição)' : 'Faixas'}
-          </label>
-          {(block.resultFaixas||[{min:0,max:33,label:'Nível 1',cor:'#4f8ef7'},{min:34,max:66,label:'Nível 2',cor:'#4f8ef7'},{min:67,max:100,label:'Nível 3',cor:'#4f8ef7'}]).map((f,i)=>{
-            const FAIXAS_DEF = [{min:0,max:33,label:'Nível 1',cor:'#4f8ef7'},{min:34,max:66,label:'Nível 2',cor:'#4f8ef7'},{min:67,max:100,label:'Nível 3',cor:'#4f8ef7'}]
-            const updateFaixa = (data: any) => { const fs=[...(block.resultFaixas||FAIXAS_DEF)]; fs[i]={...fs[i],...data}; onChange({resultFaixas:fs as any}) }
-            return (
-              <div key={i} className="flex flex-col gap-2 p-2.5 rounded-xl" style={{ background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.06)' }}>
-                <div className="flex items-center gap-2">
-                  {/* Cor */}
-                  <div className="relative w-5 h-5 rounded-md overflow-hidden flex-shrink-0" style={{ border:'1px solid rgba(255,255,255,0.2)' }}>
-                    <div style={{ width:'100%', height:'100%', background:f.cor }}/>
-                    <input type="color" value={f.cor||'#4f8ef7'} onChange={e=>updateFaixa({cor:e.target.value})} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"/>
-                  </div>
-                  {/* Nome */}
-                  <input value={f.label} onChange={e=>updateFaixa({label:e.target.value})} className="flex-1 bg-transparent text-xs text-white outline-none font-medium" style={{ minWidth:0 }} placeholder="Nome do nível"/>
-                  {/* Range */}
-                  <span className="text-[10px] flex-shrink-0" style={{ color:'rgba(255,255,255,0.3)' }}>{f.min}–{f.max}</span>
-                </div>
-                {/* Descrição — só aparece para Níveis */}
-                {block.compId==='niveis' && (
-                  <input
-                    value={(f as any).desc||''} 
-                    onChange={e=>updateFaixa({desc:e.target.value})}
-                    placeholder="Descrição abaixo da vela (ex: Iniciante, 7 dias...)"
-                    className="w-full bg-transparent text-[10px] outline-none"
-                    style={{ color:'rgba(255,255,255,0.4)', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:5 }}
-                  />
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </>}
-      {block.compId==='grafico'&&<>
-        <Field label="Tipo">{seg('graficoTipo',[{v:'linha',l:'Linha'},{v:'area',l:'Área'},{v:'barra',l:'Barra'},{v:'pizza',l:'Pizza'}],'linha')}</Field>
-        <Field label="Título">{inp('graficoTitulo','Ex: Crescimento mensal')}</Field>
-        <Field label="Subtítulo">{inp('graficoSubtitulo','Ex: Últimos 7 meses')}</Field>
-        <ColorPicker label="Cor principal" value={block.graficoCor||'#7c5cfc'} onChange={v=>onChange({graficoCor:v})}/>
-        <Slider label="Altura" value={block.graficoAlturaCustom??110} min={60} max={220} unit="px" onChange={v=>onChange({graficoAlturaCustom:v})}/>
-        <Field label="Valores (vírgula)">
-          <input value={(block.graficoValores||[30,55,40,70,60,85,75]).join(',')} onChange={e=>onChange({graficoValores:e.target.value.split(',').map((n:string)=>Number(n.trim())||0)})} placeholder="30,55,40,70,60,85,75" className="w-full rounded-lg px-3 py-2 text-xs text-white outline-none" style={s}/>
-        </Field>
-        <Field label="Labels (vírgula)">
-          <input value={(block.graficoLabels||['Jan','Fev','Mar','Abr','Mai','Jun','Jul']).join(',')} onChange={e=>onChange({graficoLabels:e.target.value.split(',').map((l:string)=>l.trim())})} placeholder="Jan,Fev,Mar..." className="w-full rounded-lg px-3 py-2 text-xs text-white outline-none" style={s}/>
-        </Field>
-        <div className="flex flex-col gap-2">
-          <Toggle label="Mostrar grid" value={block.graficoMostrarGrid!==false} onChange={v=>onChange({graficoMostrarGrid:v})}/>
-          <Toggle label="Mostrar pontos" value={block.graficoMostrarPontos!==false} onChange={v=>onChange({graficoMostrarPontos:v})}/>
-          <Toggle label="Mostrar labels" value={(block as any).graficoMostrarLabels!==false} onChange={v=>onChange({graficoMostrarLabels:v} as any)}/>
-        </div>
-      </>}
-      {block.compId==='botao'&&<>
-        <Field label="Texto">{inp('botaoTexto','Continuar →')}</Field>
-        <Field label="Ícone (emoji)">{inp('botaoIcone','🚀')}</Field>
-        <ColorPicker label="Cor de fundo" value={block.botaoCor||'#7c5cfc'} onChange={v=>onChange({botaoCor:v})}/>
-        <ColorPicker label="Cor do texto" value={block.botaoTextoCor||'#ffffff'} onChange={v=>onChange({botaoTextoCor:v})}/>
-        <Slider label="Arredondamento" value={block.botaoBorderRadius??12} min={0} max={30} unit="px" onChange={v=>onChange({botaoBorderRadius:v})}/>
-        <Field label="Tamanho">{seg('botaoTamanho',[{v:'sm',l:'P'},{v:'md',l:'M'},{v:'lg',l:'G'}],'md')}</Field>
-        <Field label="Animação">{sel('botaoAnimacao',[{v:'nenhuma',l:'Nenhuma'},{v:'pulsar',l:'Pulsar'},{v:'aparecer',l:'Aparecer'},{v:'balanco',l:'Balanço'}],'nenhuma')}</Field>
-        <Field label="">{tog('Sombra','botaoSombra',false)}</Field>
-      </>}
-      {block.compId==='carrossel'&&<>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] font-medium uppercase tracking-wider" style={{ color:'rgba(255,255,255,0.35)' }}>Imagens</label>
-            <label className="text-[10px] cursor-pointer" style={{ color:'#a78bfa', background:'rgba(124,92,252,0.1)', border:'1px solid rgba(124,92,252,0.25)', borderRadius:6, padding:'2px 8px' }}>
-              + Adicionar
-              <input type="file" accept="image/*" multiple className="hidden" onChange={e=>{
-                const files=Array.from(e.target.files||[])
-                const current=(block as any).carrosselImagens||[]
-                files.forEach(f=>{const reader=new FileReader();reader.onload=ev=>{onChange({carrosselImagens:[...current,ev.target?.result as string]} as any)};reader.readAsDataURL(f)})
-              }}/>
-            </label>
-          </div>
-          {((block as any).carrosselImagens||[]).map((img:string,i:number)=>(
-            <div key={i} style={{ position:'relative', borderRadius:8, overflow:'hidden', height:48 }}>
-              <img src={img} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-              <button onClick={()=>{const imgs=[...(block as any).carrosselImagens];imgs.splice(i,1);onChange({carrosselImagens:imgs} as any)}} style={{ position:'absolute', top:3, right:3, background:'rgba(244,63,94,0.8)', border:'none', borderRadius:4, color:'#fff', fontSize:11, cursor:'pointer', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
-            </div>
-          ))}
-        </div>
-        <Slider label="Altura" value={(block as any).carrosselAltura??160} min={80} max={320} unit="px" onChange={v=>onChange({carrosselAltura:v} as any)}/>
-        <Toggle label="Autoplay" value={(block as any).carrosselAutoplay??false} onChange={v=>onChange({carrosselAutoplay:v} as any)}/>
-      </>}
+      {block.compId==='botao'&&<><Field label="Texto">{inp('botaoTexto','Continuar →')}</Field><Field label="Ícone (emoji)">{inp('botaoIcone','🚀')}</Field><ColorPicker label="Cor de fundo" value={block.botaoCor||'#7c5cfc'} onChange={v=>onChange({botaoCor:v})}/><ColorPicker label="Cor do texto" value={block.botaoTextoCor||'#ffffff'} onChange={v=>onChange({botaoTextoCor:v})}/><Slider label="Arredondamento" value={block.botaoBorderRadius??12} min={0} max={30} unit="px" onChange={v=>onChange({botaoBorderRadius:v})}/><Field label="Tamanho">{seg('botaoTamanho',[{v:'sm',l:'P'},{v:'md',l:'M'},{v:'lg',l:'G'}],'md')}</Field><Field label="">{tog('Sombra','botaoSombra',false)}</Field></>}
       {block.compId==='imagem'&&<><Field label="Upload"><UploadButton label="Carregar imagem" accept="image/*" value={block.imagemFile} onChange={v=>onChange({imagemFile:v})}/></Field><Field label="URL">{inp('imagemUrl','https://...')}</Field><Slider label="Altura" value={block.imagemHeight??120} min={60} max={300} unit="px" onChange={v=>onChange({imagemHeight:v})}/><Slider label="Arredondamento" value={block.imagemBorderRadius??12} min={0} max={24} unit="px" onChange={v=>onChange({imagemBorderRadius:v})}/><Field label="Texto sobreposto">{inp('imagemOverlayTexto','...')}</Field></>}
-      {block.compId==='video'&&<><Field label="Upload"><UploadButton label="Carregar vídeo" accept="video/*" value={block.videoFile} onChange={v=>onChange({videoFile:v})}/></Field><Field label="URL YouTube">{inp('videoUrl','https://youtube.com/...')}</Field><Field label="Thumbnail"><UploadButton label="Thumbnail" accept="image/*" value={block.videoThumb} onChange={v=>onChange({videoThumb:v})}/></Field></>}
-      {block.compId==='audio'&&<><Field label="Upload"><UploadButton label="Carregar áudio" accept="audio/*" value={block.audioFile} onChange={v=>onChange({audioFile:v})}/></Field><Field label="Título">{inp('audioTitulo','Nome do áudio')}</Field></>}
-      {block.compId==='cronometro'&&<>
-        <Field label="Texto">{inp('cronoTexto','Oferta expira em')}</Field>
-        <Field label="Estilo">{seg('cronoEstilo',[{v:'blocos',l:'Blocos'},{v:'minimalista',l:'Minimal'}],'blocos')}</Field>
-        <div className="grid grid-cols-3 gap-2">
-          <Field label="Horas">{num('cronoHoras',0,23,0)}</Field>
-          <Field label="Min">{num('cronoMinutos',0,59,8)}</Field>
-          <Field label="Seg">{num('cronoSegundos',0,59,47)}</Field>
-        </div>
-        <ColorPicker label="Cor" value={block.cronoCor||'#7c5cfc'} onChange={v=>onChange({cronoCor:v})}/>
-      </>}
+      {block.compId==='cronometro'&&<><Field label="Texto">{inp('cronoTexto','Oferta expira em')}</Field><div className="grid grid-cols-3 gap-2"><Field label="Horas">{num('cronoHoras',0,23,0)}</Field><Field label="Min">{num('cronoMinutos',0,59,8)}</Field><Field label="Seg">{num('cronoSegundos',0,59,47)}</Field></div><ColorPicker label="Cor" value={block.cronoCor||'#7c5cfc'} onChange={v=>onChange({cronoCor:v})}/></>}
       {block.compId==='depoimento'&&<><Field label="Nome">{inp('depNome','Nome')}</Field><Field label="Depoimento">{ta('depTexto','...',3)}</Field><Field label="Estrelas"><div className="flex gap-2">{[1,2,3,4,5].map(n=><button key={n} onClick={()=>onChange({depEstrelas:n})} style={{ fontSize:20, color:n<=(block.depEstrelas??5)?'#f97316':'#ddd', background:'none', border:'none', cursor:'pointer' }}>★</button>)}</div></Field><Field label="Foto"><UploadButton label="Foto" accept="image/*" value={block.depAvatar} onChange={v=>onChange({depAvatar:v})}/></Field><ColorPicker label="Cor do card" value={block.depCardCor||'#f9f9fc'} onChange={v=>onChange({depCardCor:v})}/></>}
       {block.compId==='garantia'&&<><Field label="Dias">{num('garDias',1,365,7)}</Field><Field label="Texto">{inp('garTexto','Reembolso 100%')}</Field><ColorPicker label="Cor" value={block.garCor||'#22d387'} onChange={v=>onChange({garCor:v})}/></>}
       {block.compId==='preco'&&<><Field label="Preço POR">{inp('precoPor','R$27')}</Field><Field label="Preço DE">{inp('precoDe','R$197')}</Field><Field label="Parcelamento">{inp('precoParcelas','12x de R$2,70')}</Field><Field label="Badge">{inp('precoBadge','-80%')}</Field><ColorPicker label="Cor" value={block.precoCor||'#7c5cfc'} onChange={v=>onChange({precoCor:v})}/></>}
       {block.compId==='checkout'&&<><Field label="Texto do botão">{inp('checkoutTexto','Quero acesso agora →')}</Field><ColorPicker label="Cor" value={block.checkoutCor||'#f97316'} onChange={v=>onChange({checkoutCor:v})}/><Field label=""><div className="flex flex-col gap-2">{tog('Pix','checkoutPix')}{tog('Cartão','checkoutCartao')}</div></Field><Field label="Segurança">{inp('checkoutSeguranca','🔒 Compra segura')}</Field></>}
       {block.compId==='beneficios'&&<><Field label="Itens"><textarea rows={5} value={(block.benefItems||['Benefício 1']).join('\n')} onChange={e=>onChange({benefItems:e.target.value.split('\n').filter(Boolean)})} className="w-full rounded-lg px-3 py-2 text-xs text-white resize-none outline-none" style={{...s,lineHeight:1.6}}/></Field><ColorPicker label="Cor" value={block.benefCor||'#22d387'} onChange={v=>onChange({benefCor:v})}/></>}
       {block.compId==='carregamento'&&<><Field label="Texto">{inp('loadTexto','Analisando...')}</Field><ColorPicker label="Cor" value={block.loadCor||'#7c5cfc'} onChange={v=>onChange({loadCor:v})}/></>}
-      {block.compId==='transformacao'&&<>
-        <Field label="Imagem Antes"><UploadButton label="Antes" accept="image/*" value={(block as any).transImagemAntes} onChange={v=>onChange({transImagemAntes:v} as any)}/></Field>
-        <Field label="Texto Antes">{ta('transTextoAntes','Antes...',2)}</Field>
-        <ColorPicker label="Cor Antes" value={(block as any).transCorAntes||'#6b7280'} onChange={v=>onChange({transCorAntes:v} as any)}/>
-        <Field label="Imagem Depois"><UploadButton label="Depois" accept="image/*" value={(block as any).transImagemDepois} onChange={v=>onChange({transImagemDepois:v} as any)}/></Field>
-        <Field label="Texto Depois">{ta('transTextoDepois','Depois...',2)}</Field>
-        <ColorPicker label="Cor Depois" value={(block as any).transCorDepois||'#4f8ef7'} onChange={v=>onChange({transCorDepois:v} as any)}/>
-      </>}
       {block.compId==='redirecionar'&&<><Field label="Segundos">{num('redirSegundos',1,300,10)}</Field><Field label="URL">{inp('redirUrl','https://...')}</Field></>}
-      {block.compId==='numero'&&<>
-        <Field label="Valor inicial">{inp('numeroValorInicial','0','number')}</Field>
-        <Field label="Valor final">{inp('numeroValorFinal','100','number')}</Field>
-        <Field label="Subtítulo (opcional)">{inp('numeroSubtitulo','Ex: clientes satisfeitos')}</Field>
-        <Field label="Formato">{seg('numeroFormato',[{v:'numero',l:'Número'},{v:'porcentagem',l:'%'},{v:'moeda',l:'R$'}],'numero')}</Field>
-        <Slider label="Tamanho" value={(block as any).numeroTamanho??64} min={24} max={120} unit="px" onChange={v=>onChange({numeroTamanho:v} as any)}/>
-        <Slider label="Duração da animação" value={(block as any).numeroDuracao??1500} min={300} max={5000} unit="ms" onChange={v=>onChange({numeroDuracao:v} as any)}/>
-        <Slider label="Decimais" value={(block as any).numeroDecimais??0} min={0} max={3} unit="" onChange={v=>onChange({numeroDecimais:v} as any)}/>
-        <Field label="Alinhamento"><AlignPicker value={(block as any).numeroAlinhamento||'center'} onChange={v=>onChange({numeroAlinhamento:v} as any)}/></Field>
-        <ColorPicker label="Cor do número" value={(block as any).numeroCor||'#7c5cfc'} onChange={v=>onChange({numeroCor:v} as any)}/>
-      </>}
-      {block.compId==='destaques'&&<>
-        <Field label="Layout">{seg('destaquesLayout',[{v:'cards',l:'Cards'},{v:'lista',l:'Lista'}],'cards')}</Field>
-        <Field label="Colunas">{seg('destaquesColunas',[{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'}],'2')}</Field>
-        <ColorPicker label="Cor dos ícones" value={(block as any).destaquesCor||'#7c5cfc'} onChange={v=>onChange({destaquesCor:v} as any)}/>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] font-medium uppercase tracking-wider" style={{ color:'rgba(255,255,255,0.35)' }}>Itens</label>
-            <button onClick={()=>{const d=(block as any).destaquesItens||[{icone:'⭐',titulo:'Destaque 1',subtitulo:''},{icone:'🔥',titulo:'Destaque 2',subtitulo:''}];onChange({destaquesItens:[...d,{icone:'✨',titulo:`Destaque ${d.length+1}`,subtitulo:''}]} as any)}} style={{ fontSize:10, color:'#a78bfa', background:'rgba(124,92,252,0.1)', border:'1px solid rgba(124,92,252,0.25)', borderRadius:6, padding:'2px 8px', cursor:'pointer' }}>+ Add</button>
-          </div>
-          {((block as any).destaquesItens||[{icone:'⭐',titulo:'Destaque 1',subtitulo:''},{icone:'🔥',titulo:'Destaque 2',subtitulo:''}]).map((item: any, i: number) => {
-            const updateItem = (data: any) => { const d=[...((block as any).destaquesItens||[{icone:'⭐',titulo:'Destaque 1',subtitulo:''},{icone:'🔥',titulo:'Destaque 2',subtitulo:''}])]; d[i]={...d[i],...data}; onChange({destaquesItens:d} as any) }
-            const removeItem = () => { const d=[...((block as any).destaquesItens||[])]; d.splice(i,1); onChange({destaquesItens:d} as any) }
-            return (
-              <div key={i} className="flex flex-col gap-2 p-2.5 rounded-xl" style={{ background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.07)' }}>
-                <div className="flex items-center gap-2">
-                  <input value={item.icone||''} onChange={e=>updateItem({icone:e.target.value})} placeholder="Emoji" className="w-10 bg-transparent text-sm outline-none text-center" style={{ color:'rgba(255,255,255,0.7)' }}/>
-                  <input value={item.titulo||''} onChange={e=>updateItem({titulo:e.target.value})} placeholder="Título" className="flex-1 bg-transparent text-xs text-white outline-none" style={{ minWidth:0 }}/>
-                  <button onClick={removeItem} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(244,63,94,0.6)', fontSize:14 }}>×</button>
-                </div>
-                <input value={item.subtitulo||''} onChange={e=>updateItem({subtitulo:e.target.value})} placeholder="Subtítulo (opcional)" className="w-full bg-transparent text-[10px] outline-none" style={{ color:'rgba(255,255,255,0.35)', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:4 }}/>
-                <input value={item.valor||''} onChange={e=>updateItem({valor:e.target.value})} placeholder="Valor destacado (ex: 10.000+)" className="w-full bg-transparent text-[10px] outline-none" style={{ color:'rgba(255,255,255,0.35)', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:4 }}/>
-              </div>
-            )
-          })}
-        </div>
-      </>}
       {block.compId==='metapixel'&&<>
-        {/* Status ativo */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderRadius:12, background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.06)' }}>
-          <div>
-            <div style={{ fontSize:12, fontWeight:600, color:'#fff', marginBottom:2 }}>Pixel ativo</div>
-            <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>Ativar/desativar disparo nesta página</div>
-          </div>
-          <div onClick={()=>onChange({pixelAtivo:block.pixelAtivo===false?true:false})} style={{ width:40, height:22, borderRadius:99, padding:2, background:block.pixelAtivo!==false?'#1877f2':'rgba(255,255,255,0.1)', border:'none', cursor:'pointer', transition:'background 0.2s', display:'flex', alignItems:'center', flexShrink:0 }}>
-            <div style={{ width:18, height:18, borderRadius:'50%', background:'#fff', transform:block.pixelAtivo!==false?'translateX(18px)':'translateX(0)', transition:'transform 0.2s', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }}/>
-          </div>
-        </div>
-
-        {/* Pixel ID */}
-        <Field label="Pixel ID">
-          <div style={{ position:'relative' }}>
-            <input value={block.pixelId||''} onChange={e=>onChange({pixelId:e.target.value})} placeholder="Ex: 1234567890123456" className="w-full rounded-lg px-3 py-2 text-xs text-white outline-none" style={{ background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.7)', paddingLeft:32 }}/>
-            <div style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', width:14, height:14, borderRadius:3, background:'#1877f2', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <span style={{ color:'#fff', fontSize:9, fontWeight:700 }}>f</span>
-            </div>
-          </div>
-        </Field>
-
-        {/* Tipo de evento */}
-        <Field label="Tipo de evento">
-          <select value={block.pixelEvento||'PageView'} onChange={e=>onChange({pixelEvento:e.target.value})} className="w-full rounded-lg px-3 py-2 text-xs outline-none" style={{ background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.7)' }}>
-            <optgroup label="Mais usados">
-              <option value="PageView">PageView — Visualização de página</option>
-              <option value="Lead">Lead — Novo lead capturado</option>
-              <option value="Purchase">Purchase — Compra finalizada</option>
-              <option value="InitiateCheckout">InitiateCheckout — Início do checkout</option>
-              <option value="ViewContent">ViewContent — Visualização de conteúdo</option>
-              <option value="CompleteRegistration">CompleteRegistration — Cadastro completo</option>
-            </optgroup>
-            <optgroup label="Outros eventos">
-              <option value="Contact">Contact — Contato realizado</option>
-              <option value="Schedule">Schedule — Agendamento</option>
-              <option value="SubmitApplication">SubmitApplication — Inscrição enviada</option>
-              <option value="AddPaymentInfo">AddPaymentInfo — Dados de pagamento</option>
-              <option value="AddToCart">AddToCart — Adicionou ao carrinho</option>
-              <option value="AddToWishlist">AddToWishlist — Lista de desejos</option>
-              <option value="CustomizeProduct">CustomizeProduct — Personalizou produto</option>
-              <option value="Donate">Donate — Doação</option>
-              <option value="FindLocation">FindLocation — Buscou localização</option>
-              <option value="Search">Search — Pesquisa</option>
-              <option value="StartTrial">StartTrial — Início de trial</option>
-              <option value="Subscribe">Subscribe — Assinatura</option>
-              <option value="Custom">Custom — Evento personalizado</option>
-            </optgroup>
+        <Field label="Pixel ID">{inp('pixelId','Ex: 1234567890123456')}</Field>
+        <Field label="Evento">
+          <select value={block.pixelEvento||'PageView'} onChange={e=>onChange({pixelEvento:e.target.value})} className="w-full rounded-lg px-3 py-2 text-xs outline-none" style={s}>
+            <option value="PageView">PageView</option>
+            <option value="Lead">Lead</option>
+            <option value="Purchase">Purchase</option>
+            <option value="InitiateCheckout">InitiateCheckout</option>
+            <option value="ViewContent">ViewContent</option>
+            <option value="CompleteRegistration">CompleteRegistration</option>
+            <option value="Custom">Custom</option>
           </select>
         </Field>
-
-        {/* Nome do evento custom */}
-        {block.pixelEvento==='Custom' && (
-          <Field label="Nome do evento personalizado">
-            <input value={(block as any).pixelEventoCustom||''} onChange={e=>onChange({pixelEventoCustom:e.target.value} as any)} placeholder="Ex: quiz_concluido, clicou_no_botao" className="w-full rounded-lg px-3 py-2 text-xs text-white outline-none" style={{ background:'#1a1b2a', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.7)' }}/>
-          </Field>
-        )}
-
-        {/* Dica */}
-        <div style={{ padding:'10px 12px', borderRadius:10, background:'rgba(24,119,242,0.06)', border:'1px solid rgba(24,119,242,0.15)' }}>
-          <div style={{ fontSize:10, color:'#60a5fa', fontWeight:600, marginBottom:4 }}>💡 Dica</div>
-          <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', lineHeight:1.6 }}>
-            Use <strong style={{color:'rgba(255,255,255,0.6)'}}>Lead</strong> na captura, <strong style={{color:'rgba(255,255,255,0.6)'}}>Purchase</strong> na página de obrigado e <strong style={{color:'rgba(255,255,255,0.6)'}}>ViewContent</strong> em páginas de conteúdo para otimizar suas campanhas.
-          </div>
-        </div>
+        <Toggle label="Pixel ativo" value={block.pixelAtivo!==false} onChange={v=>onChange({pixelAtivo:v})}/>
       </>}
     </div>
   )
@@ -1700,17 +643,26 @@ interface Props {
   nodeId?: string
 }
 
+// ── Configurações de viewport ─────────────────────────────────────────────────
+const VIEWPORTS = {
+  mobile: { label: 'Mobile', width: 300, height: 620, desc: '375×812px', borderRadius: 44 },
+  desktop: { label: 'Desktop', width: 680, height: 560, desc: '1280×800px', borderRadius: 12 },
+} as const
+
+type ViewportKey = keyof typeof VIEWPORTS
+
 export default function EditorModal({ onClose, onSave, projectId, nodeId }: Props) {
   const [blocks, setBlocks] = useState<BlockItem[]>([])
   const [selId, setSelId] = useState<string|null>(null)
   const [dragComp, setDragComp] = useState<{compId:string;label:string}|null>(null)
   const [dragBlock, setDragBlock] = useState<string|null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number|null>(null)
-
-  // ── Estados dos botões animados ────────────────────────────────────────
   const [saving, setSaving] = useState(false)
   const [saveDone, setSaveDone] = useState(false)
   const [closing, setClosing] = useState(false)
+
+  // ── NOVO: estado do viewport ──────────────────────────────────────────
+  const [viewport, setViewport] = useState<ViewportKey>('mobile')
 
   let idN = blocks.length
   const stageRef = useRef<HTMLDivElement>(null)
@@ -1745,7 +697,6 @@ export default function EditorModal({ onClose, onSave, projectId, nodeId }: Prop
 
   const selBlock = blocks.find(b=>b.id===selId)
 
-  // ── Função de salvar ───────────────────────────────────────────────────
   async function handleSave() {
     if (saving) return
     setSaving(true)
@@ -1759,21 +710,17 @@ export default function EditorModal({ onClose, onSave, projectId, nodeId }: Prop
         onSave?.(nodeId, blocks)
       }
       setSaveDone(true)
-      setTimeout(() => {
-        setSaveDone(false)
-        setSaving(false)
-        onClose()
-      }, 1000)
-    } catch {
-      setSaving(false)
-    }
+      setTimeout(() => { setSaveDone(false); setSaving(false); onClose() }, 1000)
+    } catch { setSaving(false) }
   }
 
-  // ── Função de fechar com animação ──────────────────────────────────────
   function handleClose() {
     setClosing(true)
     setTimeout(() => { setClosing(false); onClose() }, 350)
   }
+
+  const vp = VIEWPORTS[viewport]
+  const isMobile = viewport === 'mobile'
 
   return (
     <div className="flex w-full h-full" style={{ background:'#0f1018' }}>
@@ -1798,139 +745,171 @@ export default function EditorModal({ onClose, onSave, projectId, nodeId }: Prop
             </div>
           ))}
         </div>
-
-        {/* ── BOTÕES SALVAR E FECHAR COM ANIMAÇÃO ─────────────────────── */}
         <div className="p-3 flex gap-2 border-t" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
           <style>{`
-            @keyframes editorSpin     { to { transform: rotate(360deg) } }
-            @keyframes editorPop      { 0%{transform:scale(1)} 35%{transform:scale(1.08)} 65%{transform:scale(0.96)} 100%{transform:scale(1)} }
-            @keyframes editorShake    { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-3px)} 60%{transform:translateX(3px)} 80%{transform:translateX(-2px)} }
-            @keyframes editorCheck    { from{opacity:0;transform:scale(0.4) rotate(-10deg)} to{opacity:1;transform:scale(1) rotate(0deg)} }
+            @keyframes editorSpin  { to { transform: rotate(360deg) } }
+            @keyframes editorPop   { 0%{transform:scale(1)} 35%{transform:scale(1.08)} 65%{transform:scale(0.96)} 100%{transform:scale(1)} }
+            @keyframes editorShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-3px)} 60%{transform:translateX(3px)} 80%{transform:translateX(-2px)} }
+            @keyframes editorCheck { from{opacity:0;transform:scale(0.4)} to{opacity:1;transform:scale(1)} }
           `}</style>
-
-          {/* Botão Salvar */}
-          <button
-            disabled={saving}
-            onClick={handleSave}
-            className="flex-1 py-2 rounded-xl text-xs font-semibold"
-            style={{
-              background: saveDone ? '#22d387' : saving ? 'rgba(124,92,252,0.45)' : '#7c5cfc',
-              color: '#fff',
-              border: 'none',
-              cursor: saving ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 5,
-              transition: 'background 0.25s, box-shadow 0.2s',
-              boxShadow: saveDone
-                ? '0 0 0 3px rgba(34,211,135,0.3), 0 4px 12px rgba(34,211,135,0.2)'
-                : saving ? 'none'
-                : '0 4px 14px rgba(124,92,252,0.45)',
-              animation: saveDone ? 'editorPop 0.4s ease' : 'none',
-            }}
-          >
-            {saving && !saveDone && (
-              <svg style={{ animation: 'editorSpin 0.7s linear infinite', flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-              </svg>
-            )}
-            {saveDone && (
-              <svg style={{ animation: 'editorCheck 0.3s ease', flexShrink: 0 }} width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M1.5 6l3 3 6-6"/>
-              </svg>
-            )}
-            {!saving && !saveDone && (
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0 }}>
-                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
-                <path d="M17 21v-8H7v8M7 3v5h8"/>
-              </svg>
-            )}
-            {saveDone ? 'Salvo! ✓' : saving ? 'Salvando...' : 'Salvar'}
+          <button disabled={saving} onClick={handleSave} className="flex-1 py-2 rounded-xl text-xs font-semibold" style={{ background: saveDone?'#22d387':saving?'rgba(124,92,252,0.45)':'#7c5cfc', color:'#fff', border:'none', cursor:saving?'not-allowed':'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5, transition:'background 0.25s', boxShadow:saveDone?'0 0 0 3px rgba(34,211,135,0.3)':saving?'none':'0 4px 14px rgba(124,92,252,0.45)', animation:saveDone?'editorPop 0.4s ease':'none' }}>
+            {saving&&!saveDone&&<svg style={{ animation:'editorSpin 0.7s linear infinite', flexShrink:0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>}
+            {saveDone&&<svg style={{ animation:'editorCheck 0.3s ease', flexShrink:0 }} width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M1.5 6l3 3 6-6"/></svg>}
+            {!saving&&!saveDone&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink:0 }}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>}
+            {saveDone?'Salvo! ✓':saving?'Salvando...':'Salvar'}
           </button>
-
-          {/* Botão Fechar */}
-          <button
-            onClick={handleClose}
-            className="flex-1 py-2 rounded-xl text-xs"
-            style={{
-              border: `1px solid ${closing ? 'rgba(248,113,113,0.5)' : 'rgba(255,255,255,0.1)'}`,
-              color: closing ? '#f87171' : 'rgba(255,255,255,0.5)',
-              background: closing ? 'rgba(248,113,113,0.08)' : 'transparent',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 5,
-              transition: 'all 0.2s',
-              animation: closing ? 'editorShake 0.35s ease' : 'none',
-            }}
-          >
-            <svg
-              width="10" height="10" viewBox="0 0 12 12"
-              fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-              style={{ transition: 'transform 0.25s', transform: closing ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0 }}
-            >
-              <path d="M2 2l8 8M10 2l-8 8"/>
-            </svg>
+          <button onClick={handleClose} className="flex-1 py-2 rounded-xl text-xs" style={{ border:`1px solid ${closing?'rgba(248,113,113,0.5)':'rgba(255,255,255,0.1)'}`, color:closing?'#f87171':'rgba(255,255,255,0.5)', background:closing?'rgba(248,113,113,0.08)':'transparent', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5, transition:'all 0.2s', animation:closing?'editorShake 0.35s ease':'none' }}>
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ transition:'transform 0.25s', transform:closing?'rotate(90deg)':'rotate(0deg)', flexShrink:0 }}><path d="M2 2l8 8M10 2l-8 8"/></svg>
             Fechar
           </button>
         </div>
       </div>
 
-      {/* ── CANVAS DO CELULAR ───────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-start pt-6 overflow-y-auto" style={{ background:'#0f1018' }}>
-        <div className="text-xs mb-5" style={{ color:'rgba(255,255,255,0.25)' }}>Arraste ou clique para adicionar</div>
-        <div className="flex-shrink-0 relative" style={{ width:300, height:620, background:'linear-gradient(145deg,#2a2b3e,#1a1b2a)', borderRadius:44, padding:3, boxShadow:'0 0 0 1px rgba(255,255,255,0.08),0 24px 60px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.1)' }}>
-          <div style={{ position:'absolute', left:-3, top:100, width:3, height:32, background:'#2a2b3e', borderRadius:'2px 0 0 2px' }}/>
-          <div style={{ position:'absolute', left:-3, top:144, width:3, height:32, background:'#2a2b3e', borderRadius:'2px 0 0 2px' }}/>
-          <div style={{ position:'absolute', right:-3, top:120, width:3, height:52, background:'#2a2b3e', borderRadius:'0 2px 2px 0' }}/>
-          <div style={{ width:'100%', height:'100%', background:'#fff', borderRadius:42, overflow:'hidden', display:'flex', flexDirection:'column' }} onDragOver={e=>e.preventDefault()} onDrop={handleDropOnPhone}>
-            <div style={{ height:44, background:'#fff', flexShrink:0, display:'flex', alignItems:'flex-end', paddingBottom:6, paddingLeft:20, paddingRight:16, justifyContent:'space-between' }}>
-              <span style={{ fontSize:11, fontWeight:700, color:'#111', letterSpacing:'-0.3px' }}>9:41</span>
-              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <svg width="16" height="10" viewBox="0 0 16 10" fill="#111"><rect x="0" y="6" width="3" height="4" rx="0.5"/><rect x="4.5" y="4" width="3" height="6" rx="0.5"/><rect x="9" y="2" width="3" height="8" rx="0.5"/><rect x="13.5" y="0" width="3" height="10" rx="0.5"/></svg>
-                <div style={{ display:'flex', alignItems:'center', gap:1 }}><div style={{ width:22, height:11, border:'1.5px solid #111', borderRadius:3, padding:1.5, display:'flex', alignItems:'center' }}><div style={{ width:'80%', height:'100%', background:'#111', borderRadius:1.5 }}/></div><div style={{ width:2, height:5, background:'#111', borderRadius:1 }}/></div>
-              </div>
-            </div>
-            <div style={{ display:'flex', justifyContent:'center', marginTop:-4, marginBottom:6, flexShrink:0 }}>
-              <div style={{ width:90, height:26, background:'#111', borderRadius:20 }}/>
-            </div>
-            <div ref={stageRef} style={{ flex:1, overflowY:'auto' }}>
-              {blocks.length===0?(
-                <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8, margin:12, border:'2px dashed rgba(124,92,252,0.2)', borderRadius:16 }}>
-                  <div style={{ width:36, height:36, background:'#f5f3ff', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ color:'#7c5cfc', fontSize:20 }}>+</span></div>
-                  <span style={{ fontSize:11, color:'#bbb', textAlign:'center', padding:'0 20px' }}>Arraste ou clique em um componente</span>
+      {/* ── CANVAS ──────────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col items-center overflow-y-auto" style={{ background:'#0f1018' }}>
+
+        {/* ── TOGGLE VIEWPORT ──────────────────────────────────────────── */}
+        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 0 12px', flexShrink:0 }}>
+          <div style={{ display:'flex', background:'#1a1b2a', borderRadius:10, padding:3, gap:2 }}>
+            {(Object.keys(VIEWPORTS) as ViewportKey[]).map(key => {
+              const active = viewport === key
+              return (
+                <button
+                  key={key}
+                  onClick={() => setViewport(key)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '6px 14px', borderRadius: 8,
+                    background: active ? '#7c5cfc' : 'transparent',
+                    border: 'none', cursor: 'pointer',
+                    color: active ? '#fff' : 'rgba(255,255,255,0.35)',
+                    fontSize: 12, fontWeight: active ? 600 : 400,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {key === 'mobile' ? (
+                    <svg width="12" height="14" viewBox="0 0 12 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <rect x="1" y="0.5" width="10" height="13" rx="2"/>
+                      <circle cx="6" cy="11.5" r="0.8" fill="currentColor" stroke="none"/>
+                    </svg>
+                  ) : (
+                    <svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <rect x="0.5" y="0.5" width="13" height="9" rx="1.5"/>
+                      <path d="M4 11.5h6M7 9.5v2"/>
+                    </svg>
+                  )}
+                  {VIEWPORTS[key].label}
+                </button>
+              )
+            })}
+          </div>
+          <span style={{ fontSize:10, color:'rgba(255,255,255,0.2)' }}>{vp.desc}</span>
+        </div>
+
+        {/* ── DEVICE FRAME ─────────────────────────────────────────────── */}
+        <div className="flex-shrink-0 relative" style={{
+          width: vp.width + (isMobile ? 6 : 2),
+          transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1)',
+        }}>
+          <div style={{
+            width: '100%',
+            background: isMobile ? 'linear-gradient(145deg,#2a2b3e,#1a1b2a)' : '#1a1b2a',
+            borderRadius: vp.borderRadius + (isMobile ? 0 : 0),
+            padding: isMobile ? 3 : 2,
+            boxShadow: isMobile
+              ? '0 0 0 1px rgba(255,255,255,0.08),0 24px 60px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.1)'
+              : '0 0 0 1px rgba(255,255,255,0.08),0 12px 40px rgba(0,0,0,0.5)',
+            transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
+          }}>
+            {/* Botões laterais do celular */}
+            {isMobile && <>
+              <div style={{ position:'absolute', left:-3, top:100, width:3, height:32, background:'#2a2b3e', borderRadius:'2px 0 0 2px' }}/>
+              <div style={{ position:'absolute', left:-3, top:144, width:3, height:32, background:'#2a2b3e', borderRadius:'2px 0 0 2px' }}/>
+              <div style={{ position:'absolute', right:-3, top:120, width:3, height:52, background:'#2a2b3e', borderRadius:'0 2px 2px 0' }}/>
+            </>}
+
+            {/* Barra superior desktop */}
+            {!isMobile && (
+              <div style={{ height:32, background:'#13141f', borderRadius:'10px 10px 0 0', display:'flex', alignItems:'center', paddingLeft:12, gap:6, borderBottom:'1px solid rgba(255,255,255,0.05)', flexShrink:0 }}>
+                {['#f43f5e','#f59e0b','#22d387'].map((c,i) => (
+                  <div key={i} style={{ width:10, height:10, borderRadius:'50%', background:c, opacity:0.7 }}/>
+                ))}
+                <div style={{ flex:1, margin:'0 12px', height:18, background:'rgba(255,255,255,0.06)', borderRadius:4, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <span style={{ fontSize:9, color:'rgba(255,255,255,0.25)' }}>preview do funil</span>
                 </div>
-              ):(
-                <div>
-                  {blocks.map((block,idx)=>(
-                    <div key={block.id}>
-                      <div onDragOver={e=>{e.preventDefault();setDragOverIdx(idx)}} onDrop={e=>handleBlockDrop(e,idx)} style={{ height:dragOverIdx===idx?4:2, background:dragOverIdx===idx?'#7c5cfc':'transparent', margin:'0 4px', borderRadius:2, transition:'all .15s' }}/>
-                      <div draggable onDragStart={e=>{e.stopPropagation();setDragBlock(block.id)}} onDragEnd={()=>{setDragBlock(null);setDragOverIdx(null)}} onDragOver={e=>{e.preventDefault();setDragOverIdx(idx)}} onDrop={e=>handleBlockDrop(e,idx)} onClick={()=>setSelId(block.id)} style={{ borderBottom:'1px solid rgba(0,0,0,0.04)', cursor:'pointer', position:'relative', outline:selId===block.id?'2px solid #7c5cfc':'none', outlineOffset:-1, background:selId===block.id?'rgba(124,92,252,0.03)':'transparent', transition:'all .1s' }}>
-                        <BlockRenderer block={block}/>
-                        {selId===block.id&&(
-                          <div style={{ position:'absolute', top:3, right:4, display:'flex', gap:2, zIndex:10 }}>
-                            <button onClick={e=>moveUp(block.id,e)} style={{ width:18, height:18, background:'rgba(0,0,0,0.08)', border:'none', borderRadius:4, fontSize:9, cursor:'pointer', color:'#555' }}>↑</button>
-                            <button onClick={e=>moveDown(block.id,e)} style={{ width:18, height:18, background:'rgba(0,0,0,0.08)', border:'none', borderRadius:4, fontSize:9, cursor:'pointer', color:'#555' }}>↓</button>
-                            <button onClick={e=>delBlock(block.id,e)} style={{ width:18, height:18, background:'rgba(244,63,94,0.1)', border:'none', borderRadius:4, fontSize:9, cursor:'pointer', color:'#f43f5e' }}>×</button>
-                          </div>
-                        )}
-                      </div>
+              </div>
+            )}
+
+            {/* Tela */}
+            <div style={{
+              width: '100%',
+              height: isMobile ? vp.height : vp.height - 32,
+              background:'#fff',
+              borderRadius: isMobile ? 42 : '0 0 10px 10px',
+              overflow:'hidden',
+              display:'flex',
+              flexDirection:'column',
+              transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
+            }} onDragOver={e=>e.preventDefault()} onDrop={handleDropOnPhone}>
+
+              {/* Status bar mobile */}
+              {isMobile && (
+                <>
+                  <div style={{ height:44, background:'#fff', flexShrink:0, display:'flex', alignItems:'flex-end', paddingBottom:6, paddingLeft:20, paddingRight:16, justifyContent:'space-between' }}>
+                    <span style={{ fontSize:11, fontWeight:700, color:'#111', letterSpacing:'-0.3px' }}>9:41</span>
+                    <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                      <svg width="16" height="10" viewBox="0 0 16 10" fill="#111"><rect x="0" y="6" width="3" height="4" rx="0.5"/><rect x="4.5" y="4" width="3" height="6" rx="0.5"/><rect x="9" y="2" width="3" height="8" rx="0.5"/><rect x="13.5" y="0" width="3" height="10" rx="0.5"/></svg>
+                      <div style={{ display:'flex', alignItems:'center', gap:1 }}><div style={{ width:22, height:11, border:'1.5px solid #111', borderRadius:3, padding:1.5, display:'flex', alignItems:'center' }}><div style={{ width:'80%', height:'100%', background:'#111', borderRadius:1.5 }}/></div><div style={{ width:2, height:5, background:'#111', borderRadius:1 }}/></div>
                     </div>
-                  ))}
-                  <div onDragOver={e=>{e.preventDefault();setDragOverIdx(blocks.length)}} onDrop={e=>handleBlockDrop(e,blocks.length)} style={{ height:dragOverIdx===blocks.length?4:2, background:dragOverIdx===blocks.length?'#7c5cfc':'transparent', margin:'0 4px', borderRadius:2, transition:'all .15s' }}/>
-                  <div style={{ height:32 }}/>
+                  </div>
+                  <div style={{ display:'flex', justifyContent:'center', marginTop:-4, marginBottom:6, flexShrink:0 }}>
+                    <div style={{ width:90, height:26, background:'#111', borderRadius:20 }}/>
+                  </div>
+                </>
+              )}
+
+              {/* Conteúdo dos blocos */}
+              <div ref={stageRef} style={{ flex:1, overflowY:'auto' }}>
+                {blocks.length===0?(
+                  <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8, margin:12, border:'2px dashed rgba(124,92,252,0.2)', borderRadius:16 }}>
+                    <div style={{ width:36, height:36, background:'#f5f3ff', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ color:'#7c5cfc', fontSize:20 }}>+</span></div>
+                    <span style={{ fontSize:11, color:'#bbb', textAlign:'center', padding:'0 20px' }}>Arraste ou clique em um componente</span>
+                  </div>
+                ):(
+                  <div>
+                    {blocks.map((block,idx)=>(
+                      <div key={block.id}>
+                        <div onDragOver={e=>{e.preventDefault();setDragOverIdx(idx)}} onDrop={e=>handleBlockDrop(e,idx)} style={{ height:dragOverIdx===idx?4:2, background:dragOverIdx===idx?'#7c5cfc':'transparent', margin:'0 4px', borderRadius:2, transition:'all .15s' }}/>
+                        <div draggable onDragStart={e=>{e.stopPropagation();setDragBlock(block.id)}} onDragEnd={()=>{setDragBlock(null);setDragOverIdx(null)}} onDragOver={e=>{e.preventDefault();setDragOverIdx(idx)}} onDrop={e=>handleBlockDrop(e,idx)} onClick={()=>setSelId(block.id)} style={{ borderBottom:'1px solid rgba(0,0,0,0.04)', cursor:'pointer', position:'relative', outline:selId===block.id?'2px solid #7c5cfc':'none', outlineOffset:-1, background:selId===block.id?'rgba(124,92,252,0.03)':'transparent', transition:'all .1s' }}>
+                          <BlockRenderer block={block}/>
+                          {selId===block.id&&(
+                            <div style={{ position:'absolute', top:3, right:4, display:'flex', gap:2, zIndex:10 }}>
+                              <button onClick={e=>moveUp(block.id,e)} style={{ width:18, height:18, background:'rgba(0,0,0,0.08)', border:'none', borderRadius:4, fontSize:9, cursor:'pointer', color:'#555' }}>↑</button>
+                              <button onClick={e=>moveDown(block.id,e)} style={{ width:18, height:18, background:'rgba(0,0,0,0.08)', border:'none', borderRadius:4, fontSize:9, cursor:'pointer', color:'#555' }}>↓</button>
+                              <button onClick={e=>delBlock(block.id,e)} style={{ width:18, height:18, background:'rgba(244,63,94,0.1)', border:'none', borderRadius:4, fontSize:9, cursor:'pointer', color:'#f43f5e' }}>×</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    <div onDragOver={e=>{e.preventDefault();setDragOverIdx(blocks.length)}} onDrop={e=>handleBlockDrop(e,blocks.length)} style={{ height:dragOverIdx===blocks.length?4:2, background:dragOverIdx===blocks.length?'#7c5cfc':'transparent', margin:'0 4px', borderRadius:2, transition:'all .15s' }}/>
+                    <div style={{ height:32 }}/>
+                  </div>
+                )}
+              </div>
+
+              {/* Home indicator mobile */}
+              {isMobile && (
+                <div style={{ height:32, background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <div style={{ width:120, height:4, borderRadius:3, background:'rgba(0,0,0,0.15)' }}/>
                 </div>
               )}
             </div>
-            <div style={{ height:32, background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <div style={{ width:120, height:4, borderRadius:3, background:'rgba(0,0,0,0.15)' }}/>
-            </div>
           </div>
         </div>
+
         <div className="text-[10px] mt-4 mb-6" style={{ color:'rgba(255,255,255,0.2)' }}>
-          {blocks.length} componente{blocks.length!==1?'s':''} • 375×812px
+          {blocks.length} componente{blocks.length!==1?'s':''} • {vp.desc}
         </div>
       </div>
 
