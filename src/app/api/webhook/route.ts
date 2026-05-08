@@ -41,58 +41,9 @@ function getPlanLabel(plan: string): string {
   return 'Basic'
 }
 
-function getPlanColor(plan: string): string {
-  if (plan === 'black') return '#f59e0b'
-  if (plan === 'pro') return '#7c5cfc'
-  return '#22d387'
-}
-
-function getPlanBenefits(plan: string): string[] {
-  if (plan === 'black') return [
-    'Funis ilimitados',
-    'Domínio personalizado',
-    'Integrações avançadas (Pixel, GTM, UTMify)',
-    'Estatísticas detalhadas por página',
-    'Suporte prioritário',
-    'Acesso por 3 meses',
-  ]
-  if (plan === 'pro') return [
-    'Até 10 funis ativos',
-    'Domínio personalizado',
-    'Integrações (Pixel, GTM)',
-    'Estatísticas completas',
-    'Suporte em até 24h',
-    'Acesso por 1 mês',
-  ]
-  return [
-    'Até 3 funis ativos',
-    'Subdomínio Synkro',
-    'Estatísticas básicas',
-    'Suporte por email',
-    'Acesso por 1 mês',
-  ]
-}
-
 function buildEmail(email: string, password: string, plan: string, appUrl: string): string {
   const planLabel = getPlanLabel(plan)
-  const planColor = getPlanColor(plan)
-  const benefits = getPlanBenefits(plan)
   const loginUrl = `${appUrl}/auth`
-
-  const benefitItems = benefits.map(b => `
-    <tr>
-      <td style="padding: 7px 0;">
-        <table cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td style="width: 22px; vertical-align: top; padding-top: 1px;">
-              <div style="width: 18px; height: 18px; border-radius: 50%; background: ${planColor}20; border: 1.5px solid ${planColor}60; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 18px; font-size: 10px; color: ${planColor};">✓</div>
-            </td>
-            <td style="padding-left: 10px; font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.5;">${b}</td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  `).join('')
 
   return `
 <!DOCTYPE html>
@@ -102,121 +53,66 @@ function buildEmail(email: string, password: string, plan: string, appUrl: strin
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Bem-vindo ao Synkro</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #080910; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #080910; padding: 40px 20px;">
+<body style="margin: 0; padding: 0; background-color: #f0f0f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f0f0f0; padding: 40px 20px;">
     <tr>
       <td align="center">
-        <table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width: 560px; width: 100%;">
+        <table width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e0e0e0;">
 
-          <!-- Logo -->
+          <!-- Barra roxa topo -->
           <tr>
-            <td align="center" style="padding-bottom: 32px;">
-              <table cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td>
-                    <span style="font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">Syn<span style="color: #a78bfa;">kro</span></span>
-                  </td>
-                </tr>
-              </table>
-            </td>
+            <td style="height: 4px; background: #7c5cfc; font-size: 0; line-height: 0;">&nbsp;</td>
           </tr>
 
-          <!-- Hero Card -->
+          <!-- Conteúdo principal -->
           <tr>
-            <td style="background: linear-gradient(135deg, #13141f 0%, #1a1040 100%); border-radius: 20px 20px 0 0; border: 1px solid rgba(124,92,252,0.2); border-bottom: none; padding: 40px 40px 32px; text-align: center;">
-              <div style="width: 72px; height: 72px; border-radius: 20px; background: linear-gradient(135deg, ${planColor}25, ${planColor}10); border: 1.5px solid ${planColor}40; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 72px; font-size: 32px;">
-                🎉
-              </div>
-              <div style="display: inline-block; background: ${planColor}18; border: 1px solid ${planColor}40; border-radius: 99px; padding: 4px 16px; margin-bottom: 16px;">
-                <span style="font-size: 11px; font-weight: 700; color: ${planColor}; text-transform: uppercase; letter-spacing: 1.5px;">Plano ${planLabel}</span>
-              </div>
-              <h1 style="margin: 0 0 12px; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; line-height: 1.2;">
-                Seu acesso está pronto!
-              </h1>
-              <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.5); line-height: 1.6;">
-                Bem-vindo ao Synkro. Sua conta foi criada com sucesso<br/>e você já pode começar a criar seus funis de quiz.
-              </p>
-            </td>
-          </tr>
+            <td style="padding: 48px 48px 40px;">
 
-          <!-- Credenciais -->
-          <tr>
-            <td style="background: #0d0e1a; border: 1px solid rgba(124,92,252,0.2); border-top: none; border-bottom: none; padding: 0 40px;">
-              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <!-- Logo -->
+              <p style="margin: 0 0 40px; font-size: 22px; font-weight: 800; color: #0f0f0f; letter-spacing: -0.5px;">Syn<span style="color: #7c5cfc;">kro</span></p>
+
+              <!-- Título -->
+              <p style="margin: 0 0 8px; font-size: 24px; font-weight: 700; color: #0f0f0f; line-height: 1.3;">Acesso liberado.</p>
+              <p style="margin: 0 0 36px; font-size: 15px; color: #888888; line-height: 1.6;">Sua conta <strong style="color: #555;">${planLabel}</strong> foi criada. Use as credenciais abaixo para entrar.</p>
+
+              <!-- Email -->
+              <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: #aaaaaa; text-transform: uppercase; letter-spacing: 1.2px;">E-mail</p>
+              <p style="margin: 0 0 28px; font-size: 16px; font-weight: 600; color: #0f0f0f;">${email}</p>
+
+              <!-- Senha em destaque -->
+              <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: #7c5cfc; text-transform: uppercase; letter-spacing: 1.2px;">Senha temporária</p>
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 36px;">
                 <tr>
-                  <td style="padding: 24px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <p style="margin: 0 0 16px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 1.5px;">Suas credenciais de acesso</p>
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 12px;">
-                      <tr>
-                        <td style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 16px;">
-                          <p style="margin: 0 0 3px; font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 1px;">E-mail</p>
-                          <p style="margin: 0; font-size: 15px; font-weight: 600; color: #ffffff;">${email}</p>
-                        </td>
-                      </tr>
-                    </table>
+                  <td style="border: 2px solid #7c5cfc; border-radius: 8px; padding: 16px 20px;">
                     <table width="100%" cellpadding="0" cellspacing="0" border="0">
                       <tr>
-                        <td style="background: ${planColor}10; border: 1.5px solid ${planColor}35; border-radius: 10px; padding: 12px 16px;">
-                          <p style="margin: 0 0 3px; font-size: 10px; color: ${planColor}; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Senha temporária</p>
-                          <p style="margin: 0; font-size: 20px; font-weight: 800; color: ${planColor}; letter-spacing: 3px; font-family: monospace;">${password}</p>
-                        </td>
+                        <td style="font-size: 26px; font-weight: 800; color: #0f0f0f; letter-spacing: 5px; font-family: 'Courier New', Courier, monospace;">${password}</td>
+                        <td align="right" style="font-size: 11px; color: #aaaaaa; font-weight: 500; vertical-align: middle;">copie</td>
                       </tr>
                     </table>
                   </td>
                 </tr>
               </table>
-            </td>
-          </tr>
 
-          <!-- Botão CTA -->
-          <tr>
-            <td style="background: #0d0e1a; border: 1px solid rgba(124,92,252,0.2); border-top: none; border-bottom: none; padding: 24px 40px;">
-              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <!-- Botão -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 36px;">
                 <tr>
                   <td align="center">
-                    <a href="${loginUrl}" style="display: inline-block; background: linear-gradient(135deg, #7c5cfc, #a78bfa); color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 12px; font-weight: 700; font-size: 15px; letter-spacing: -0.2px; box-shadow: 0 8px 24px rgba(124,92,252,0.4);">
-                      Acessar o Synkro →
-                    </a>
+                    <a href="${loginUrl}" style="display: block; background: #7c5cfc; color: #ffffff; text-decoration: none; padding: 15px; border-radius: 8px; font-weight: 700; font-size: 15px; text-align: center;">Entrar agora</a>
                   </td>
                 </tr>
               </table>
-            </td>
-          </tr>
 
-          <!-- Benefícios -->
-          <tr>
-            <td style="background: #0d0e1a; border: 1px solid rgba(124,92,252,0.2); border-top: none; border-bottom: none; padding: 0 40px 28px;">
-              <p style="margin: 0 0 14px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 1.5px;">O que está incluído no seu plano</p>
-              <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                ${benefitItems}
-              </table>
-            </td>
-          </tr>
+              <!-- Aviso mínimo -->
+              <p style="margin: 0; font-size: 13px; color: #bbbbbb; line-height: 1.7; border-top: 1px solid #f0f0f0; padding-top: 24px;">Altere sua senha após o primeiro acesso. Dúvidas? Responda este email.</p>
 
-          <!-- Aviso segurança -->
-          <tr>
-            <td style="background: rgba(245,158,11,0.06); border: 1px solid rgba(124,92,252,0.2); border-top: 1px solid rgba(245,158,11,0.15); border-bottom: none; border-radius: 0; padding: 16px 40px;">
-              <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td style="width: 20px; vertical-align: top; padding-top: 1px; font-size: 14px;">⚠️</td>
-                  <td style="padding-left: 10px; font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.6;">
-                    Por segurança, recomendamos alterar sua senha após o primeiro acesso em <strong style="color: rgba(255,255,255,0.6);">Configurações → Alterar Senha</strong>.
-                  </td>
-                </tr>
-              </table>
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
-            <td style="background: #080910; border: 1px solid rgba(124,92,252,0.2); border-top: 1px solid rgba(255,255,255,0.04); border-radius: 0 0 20px 20px; padding: 24px 40px; text-align: center;">
-              <p style="margin: 0 0 8px; font-size: 12px; color: rgba(255,255,255,0.2); line-height: 1.6;">
-                Você recebeu este email porque realizou uma compra em nosso site.<br/>
-                Dúvidas? Responda este email que te ajudamos.
-              </p>
-              <p style="margin: 0; font-size: 12px; color: rgba(255,255,255,0.15);">
-                © 2025 Synkro · <a href="${appUrl}" style="color: rgba(124,92,252,0.6); text-decoration: none;">appsynkro.com</a>
-              </p>
+            <td style="padding: 16px 48px; background: #fafafa; border-top: 1px solid #f0f0f0;">
+              <p style="margin: 0; font-size: 12px; color: #cccccc;">© 2025 Synkro · <a href="${appUrl}" style="color: #7c5cfc; text-decoration: none;">appsynkro.com</a></p>
             </td>
           </tr>
 
@@ -231,14 +127,12 @@ function buildEmail(email: string, password: string, plan: string, appUrl: strin
 
 export async function POST(req: NextRequest) {
   try {
-    // Lê o body uma vez e guarda
     const body = await req.json()
     console.log('Webhook PerfectPay recebido:', JSON.stringify(body))
 
     // ✅ VALIDAÇÃO DO TOKEN PERFECTPAY
     const publicToken = process.env.PERFECTPAY_PUBLIC_TOKEN
     if (publicToken) {
-      // PerfectPay pode enviar o token no header ou no body
       const headerToken =
         req.headers.get('x-perfectpay-token') ||
         req.headers.get('x-public-token') ||
@@ -274,7 +168,7 @@ export async function POST(req: NextRequest) {
     const plan = getPlan(productName)
     const expiresAt = getExpiresAt(plan)
 
-    // Verifica se usuário já existe (busca direta por email, mais eficiente)
+    // Verifica se usuário já existe
     const { data: existingUsers } = await supabase.auth.admin.listUsers()
     const existingUser = existingUsers?.users?.find((u: any) => u.email === email)
 
@@ -316,7 +210,7 @@ export async function POST(req: NextRequest) {
       await resend.emails.send({
         from: 'Synkro <noreply@appsynkro.com>',
         to: email,
-        subject: `🎉 Bem-vindo ao Synkro — Plano ${getPlanLabel(plan)}`,
+        subject: `Seu acesso ao Synkro está pronto — Plano ${getPlanLabel(plan)}`,
         html,
       })
     }
