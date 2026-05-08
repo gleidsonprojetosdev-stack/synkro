@@ -27,6 +27,15 @@ interface LeadRow {
   concluiu: boolean
 }
 
+interface FunilStep {
+  nodeId: string
+  label: string
+  visitas: number
+  pctTotal: number
+  pctAnterior: number | null
+  maiorAbandono: boolean
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function fmt(date: string) {
@@ -97,6 +106,59 @@ function MiniBarChart({ data, color }: { data: { label: string; value: number }[
   )
 }
 
+// ─── Funil de Conversão ──────────────────────────────────────────────────────
+
+function FunilConversao({ steps }: { steps: FunilStep[] }) {
+  if (steps.length === 0) {
+    return (
+      <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>
+        Crie páginas no Flow primeiro
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {steps.map((step, i) => {
+        const corBarra = step.maiorAbandono ? '#f43f5e' : step === steps[steps.length - 1] ? '#22d387' : '#7c5cfc'
+        const corPct = step.maiorAbandono ? '#f43f5e' : step === steps[steps.length - 1] ? '#22d387' : 'rgba(255,255,255,0.4)'
+
+        return (
+          <div key={step.nodeId}>
+            {/* Linha da passagem entre páginas */}
+            {i > 0 && step.pctAnterior !== null && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 148, marginBottom: 4 }}>
+                <div style={{ fontSize: 10, color: step.maiorAbandono ? '#f43f5e' : step.pctAnterior >= 70 ? '#22d387' : '#f59e0b', fontWeight: 500 }}>
+                  ↓ {step.pctAnterior}% continuaram
+                  {step.maiorAbandono && <span style={{ marginLeft: 6, background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.25)', borderRadius: 99, padding: '1px 8px', fontSize: 9, fontWeight: 700 }}>⚠ maior abandono</span>}
+                </div>
+              </div>
+            )}
+
+            {/* Barra da página */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 136, fontSize: 11, color: 'rgba(255,255,255,0.55)', textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                {step.label}
+              </div>
+              <div style={{ flex: 1, position: 'relative', height: 32 }}>
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.04)', borderRadius: 6, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.max(step.pctTotal, step.visitas > 0 ? 2 : 0)}%`, background: `linear-gradient(90deg, ${corBarra}, ${corBarra}cc)`, borderRadius: 6, transition: 'width 0.6s ease' }}/>
+                </div>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', padding: '0 10px', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>
+                    {step.visitas} {i === steps.length - 1 ? 'conversões' : 'visitas'}
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: corPct }}>{step.pctTotal}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Componente principal ────────────────────────────────────────────────────
 
 export default function ResultadosPage() {
@@ -107,6 +169,7 @@ export default function ResultadosPage() {
   const [loading, setLoading] = useState(true)
   const [periodo, setPeriodo] = useState<'7d' | '30d' | 'all'>('7d')
   const [search, setSearch] = useState('')
+  const [abaAtiva, setAbaAtiva] = useState<'visitas' | 'funil'>('visitas')
 
   useEffect(() => {
     if (!projectId) return
@@ -116,7 +179,6 @@ export default function ResultadosPage() {
   async function load() {
     setLoading(true)
 
-    // Carregar flow_data para nomes das páginas
     const { data: proj } = await supabase
       .from('projects')
       .select('flow_data')
@@ -127,7 +189,6 @@ export default function ResultadosPage() {
       setNodes(proj.flow_data.nodes.filter((n: FlowNode) => n.type === 'start' || n.type === 'page'))
     }
 
-    // Filtro por período
     let query = supabase
       .from('page_stats')
       .select('*')
@@ -151,13 +212,10 @@ export default function ResultadosPage() {
 
   const totalVisitas = stats.length
   const uniqueSessions = new Set(stats.map(s => `${s.node_id}_${s.created_at.slice(0, 10)}`)).size
-
-  // Nó final = checkout ou último nó de tipo page
   const lastNodeId = nodes[nodes.length - 1]?.id
   const conversoes = stats.filter(s => s.node_id === lastNodeId).length
   const taxaConversao = totalVisitas > 0 ? Math.round((conversoes / totalVisitas) * 100) : 0
 
-  // Visitas por dia (últimos 7 dias)
   const visitasPorDia = Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - (6 - i))
@@ -167,20 +225,41 @@ export default function ResultadosPage() {
     return { label, value }
   })
 
-  // Visitas por página
   const visitasPorPagina = nodes.map(n => ({
     label: n.label || 'Página',
     value: stats.filter(s => s.node_id === n.id).length,
     nodeId: n.id,
   }))
 
-  // Retenção: % de visitas que chegaram em cada página
   const primeiroTotal = visitasPorPagina[0]?.value || 1
 
-  // Leads (agrupados por data/hora aproximada como "sessão")
+  // ── Funil de Conversão ────────────────────────────────────────────────────
+
+  const funilSteps: FunilStep[] = visitasPorPagina.map((p, i) => {
+    const anterior = i > 0 ? visitasPorPagina[i - 1].value : null
+    const pctAnterior = anterior && anterior > 0 ? Math.round((p.value / anterior) * 100) : null
+    const pctTotal = primeiroTotal > 0 ? Math.round((p.value / primeiroTotal) * 100) : 0
+    return { nodeId: p.nodeId, label: p.label, visitas: p.value, pctTotal, pctAnterior, maiorAbandono: false }
+  })
+
+  // Detecta maior abandono (menor % de passagem entre páginas consecutivas)
+  if (funilSteps.length > 1) {
+    let menorPct = Infinity
+    let menorIdx = -1
+    funilSteps.forEach((s, i) => {
+      if (i > 0 && s.pctAnterior !== null && s.pctAnterior < menorPct) {
+        menorPct = s.pctAnterior
+        menorIdx = i
+      }
+    })
+    if (menorIdx >= 0) funilSteps[menorIdx].maiorAbandono = true
+  }
+
+  // ── Leads ────────────────────────────────────────────────────────────────
+
   const leadsMap = new Map<string, LeadRow>()
   stats.forEach(s => {
-    const sessionKey = s.created_at.slice(0, 13) // agrupa por hora
+    const sessionKey = s.created_at.slice(0, 13)
     const existing = leadsMap.get(sessionKey)
     const nodeName = nodes.find(n => n.id === s.node_id)?.label || 'Página'
     if (!existing) {
@@ -259,7 +338,7 @@ export default function ResultadosPage() {
             <StatCard
               label="Conversões"
               value={conversoes}
-              sub={lastNodeId ? `última página` : ''}
+              sub={lastNodeId ? 'última página' : ''}
               color="#22d387"
               icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d387" strokeWidth="1.5" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>}
             />
@@ -272,47 +351,48 @@ export default function ResultadosPage() {
             />
           </div>
 
-          {/* Gráficos */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+          {/* Gráficos com abas */}
+          <div style={{ background: '#0d0e18', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, marginBottom: 24, overflow: 'hidden' }}>
 
-            {/* Visitas por dia */}
-            <div style={{ background: '#0d0e18', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '20px 20px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 4 }}>Visitas por dia</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>Últimos 7 dias</div>
-              {visitasPorDia.every(d => d.value === 0) ? (
-                <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>
-                  Nenhuma visita ainda
-                </div>
-              ) : (
-                <MiniBarChart data={visitasPorDia} color="#7c5cfc"/>
-              )}
+            {/* Abas */}
+            <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              {([
+                { key: 'visitas', label: 'Visitas por dia' },
+                { key: 'funil', label: 'Funil de conversão' },
+              ] as const).map(aba => (
+                <button key={aba.key} onClick={() => setAbaAtiva(aba.key)} style={{
+                  padding: '14px 20px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                  background: 'transparent', border: 'none',
+                  color: abaAtiva === aba.key ? '#fff' : 'rgba(255,255,255,0.35)',
+                  borderBottom: `2px solid ${abaAtiva === aba.key ? '#7c5cfc' : 'transparent'}`,
+                  transition: 'all 0.15s',
+                }}>
+                  {aba.label}
+                </button>
+              ))}
             </div>
 
-            {/* Retenção por página */}
-            <div style={{ background: '#0d0e18', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '20px 20px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 4 }}>Retenção por página</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>% de visitantes que chegaram em cada etapa</div>
-              {visitasPorPagina.length === 0 ? (
-                <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>
-                  Crie páginas no Flow primeiro
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {visitasPorPagina.map((p, i) => {
-                    const pct = Math.round((p.value / primeiroTotal) * 100)
-                    return (
-                      <div key={i}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{p.label}</span>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: '#a78bfa', flexShrink: 0 }}>{p.value} ({pct}%)</span>
-                        </div>
-                        <div style={{ height: 5, borderRadius: 99, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: `linear-gradient(90deg, #7c5cfc, #a78bfa)`, transition: 'width 0.5s ease' }}/>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+            <div style={{ padding: '20px' }}>
+              {abaAtiva === 'visitas' && (
+                <>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>Últimos 7 dias</div>
+                  {visitasPorDia.every(d => d.value === 0) ? (
+                    <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>
+                      Nenhuma visita ainda
+                    </div>
+                  ) : (
+                    <MiniBarChart data={visitasPorDia} color="#7c5cfc"/>
+                  )}
+                </>
+              )}
+
+              {abaAtiva === 'funil' && (
+                <>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>
+                    Taxa de passagem entre páginas — identifique onde os leads abandonam
+                  </div>
+                  <FunilConversao steps={funilSteps}/>
+                </>
               )}
             </div>
           </div>
