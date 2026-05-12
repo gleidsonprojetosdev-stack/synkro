@@ -9,16 +9,18 @@ const supabase = createClient(
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+// ✅ Detecta plano pelo nome do produto no PerfectPay
 function getPlan(productName: string): string {
   const name = productName.toLowerCase()
-  if (name.includes('black')) return 'black'
-  if (name.includes('pro')) return 'pro'
-  return 'basic'
+  if (name.includes('scale')) return 'scale'
+  if (name.includes('growth')) return 'growth'
+  return 'start'
 }
 
+// ✅ Duração: Scale = 3 meses, Start e Growth = 1 mês
 function getExpiresAt(plan: string): Date {
   const now = new Date()
-  if (plan === 'black') {
+  if (plan === 'scale') {
     now.setMonth(now.getMonth() + 3)
   } else {
     now.setMonth(now.getMonth() + 1)
@@ -36,13 +38,20 @@ function generatePassword(): string {
 }
 
 function getPlanLabel(plan: string): string {
-  if (plan === 'black') return 'Black'
-  if (plan === 'pro') return 'Pro'
-  return 'Basic'
+  if (plan === 'scale') return 'Scale'
+  if (plan === 'growth') return 'Growth'
+  return 'Start'
+}
+
+function getPlanColor(plan: string): string {
+  if (plan === 'scale') return '#f59e0b'   // Dourado — plano topo
+  if (plan === 'growth') return '#7c5cfc'  // Roxo — plano médio
+  return '#22d387'                          // Verde — plano entrada
 }
 
 function buildEmail(email: string, password: string, plan: string, appUrl: string): string {
   const planLabel = getPlanLabel(plan)
+  const planColor = getPlanColor(plan)
   const loginUrl = `${appUrl}/auth`
 
   return `
@@ -59,9 +68,9 @@ function buildEmail(email: string, password: string, plan: string, appUrl: strin
       <td align="center">
         <table width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e0e0e0;">
 
-          <!-- Barra roxa topo -->
+          <!-- Barra colorida topo (cor do plano) -->
           <tr>
-            <td style="height: 4px; background: #7c5cfc; font-size: 0; line-height: 0;">&nbsp;</td>
+            <td style="height: 4px; background: ${planColor}; font-size: 0; line-height: 0;">&nbsp;</td>
           </tr>
 
           <!-- Conteúdo principal -->
@@ -80,10 +89,10 @@ function buildEmail(email: string, password: string, plan: string, appUrl: strin
               <p style="margin: 0 0 28px; font-size: 16px; font-weight: 600; color: #0f0f0f;">${email}</p>
 
               <!-- Senha em destaque -->
-              <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: #7c5cfc; text-transform: uppercase; letter-spacing: 1.2px;">Senha temporária</p>
+              <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: ${planColor}; text-transform: uppercase; letter-spacing: 1.2px;">Senha temporária</p>
               <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 36px;">
                 <tr>
-                  <td style="border: 2px solid #7c5cfc; border-radius: 8px; padding: 16px 20px;">
+                  <td style="border: 2px solid ${planColor}; border-radius: 8px; padding: 16px 20px;">
                     <table width="100%" cellpadding="0" cellspacing="0" border="0">
                       <tr>
                         <td style="font-size: 26px; font-weight: 800; color: #0f0f0f; letter-spacing: 5px; font-family: 'Courier New', Courier, monospace;">${password}</td>
@@ -103,7 +112,7 @@ function buildEmail(email: string, password: string, plan: string, appUrl: strin
                 </tr>
               </table>
 
-              <!-- Aviso mínimo -->
+              <!-- Aviso -->
               <p style="margin: 0; font-size: 13px; color: #bbbbbb; line-height: 1.7; border-top: 1px solid #f0f0f0; padding-top: 24px;">Altere sua senha após o primeiro acesso. Dúvidas? Responda este email.</p>
 
             </td>
